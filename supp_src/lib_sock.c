@@ -133,6 +133,19 @@ cdata_get_appdata_dbuf(int idx, const char *appdata_sig)
   }
 }
 
+void
+cdata_set_appdata_dbuf(int idx, dbuf_t *d)
+{
+  cdata[idx].appdata = d; 
+}
+
+sock_handlers_t *
+cdata_get_handlers(int idx)
+{
+  return &cdata[idx].handlers;
+}
+
+
 /*@}*/
 
 /**

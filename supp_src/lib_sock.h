@@ -70,6 +70,10 @@ int init_ssl(char *cert_file_svr, char *key_file_svr, char *cert_file_clt,
          char *key_file_clt);
 
 dbuf_t *cdata_get_appdata_dbuf(int idx, const char *appdata_sig);
+void cdata_set_appdata_dbuf(int idx, dbuf_t *d);
+
+sock_handlers_t *cdata_get_handlers(int idx);
+
 void close_idx(int idx);
 
 int bind_udp_listener_specific(char *addr, int port, char *remote);
