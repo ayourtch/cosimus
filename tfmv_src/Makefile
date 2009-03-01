@@ -18,6 +18,7 @@ trans_fmv.o: trans_fmv.h trans_fmv.c template.h
 
 libtfmv.so: trans_fmv.o template.o
 	$(CC) -shared -Wl,-soname,libfmv.so -o $@ $^
+	cp $@ ../lib/
 
 clean:
 	rm -f trans_fmv.[ch]

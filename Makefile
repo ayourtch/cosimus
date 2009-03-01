@@ -9,4 +9,5 @@ tst:
 
 clean:
 	(cd supp_src; make clean)
+	(cd tfmv_src; make clean)
 	(cd test; make clean)

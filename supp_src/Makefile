@@ -12,6 +12,7 @@ supplib: depend libsupp.so
 
 libsupp.so: $(OBJS)
 	 $(CC) -shared -Wl,-soname,libsupp.so -o $@ $^ $(LIBS)
+	 cp $@ ../lib/
 
 clean:
 	rm -f *.o
