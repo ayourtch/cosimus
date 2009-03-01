@@ -32,6 +32,7 @@
         extern "C" {
 #endif
 #include <stdint.h>
+#include "lib_uuid.h"
 
 typedef int8_t s8t;
 typedef uint8_t u8t;
@@ -42,7 +43,17 @@ typedef uint32_t u32t;
 typedef uint64_t u64t;
 typedef float f32t;
 typedef double f64t;
-typedef char uuid_t[20];
+
+enum {
+  APPENDED_ACKS  = 0x10,
+  RESENT = 0x20,
+  RELIABLE  = 0x40,
+  ZEROCODED  = 0x80,
+  Low = 1,
+  Medium = 2,
+  High  = 3
+};
+
 
 void GetAcks(int* count, u32t* acks, int maxAcks, u8t* udpMessage, int udpMessageLength);
 int AppendAcks(u32t* acks, int numAcks, u8t* udpMessage, int udpMessageLength);
@@ -61,12 +72,12 @@ u16t GetPacketID(u8t* data);
 void SetPacketID(u8t* data, int frequency, u16t val);
 
 void Header_UDP(u8t* data, u16t packetId, int frequency, u8t flags);
-void LLUUID_UDP(const char* uuid_string, u8t* data, int *i);
-void UDP_LLUUID(char* uuid_string, u8t* data, int *i);
+void LLUUID_UDP(uuid_t uu, u8t* data, int *i);
+void UDP_LLUUID(uuid_t *uu, u8t* data, int *i);
 void Variable2_UDP(const char *val, int length, u8t* data, int *i);
-int UDP_Variable2(char *val, u8t* data, int *i);
+int UDP_Variable2(char *val, int maxlen, u8t* data, int *i);
 void Variable1_UDP(const char *val, int length, u8t* data, int *i);
-int UDP_Variable1(char *val, u8t* data, int *i);
+int UDP_Variable1(char *val, int maxlen, u8t* data, int *i);
 char *UUIDFromU64(u64t value);
 void LLQuaternion_UDP(f32t x, f32t y, f32t z, f32t w, u8t* data, int *i);
 void UDP_LLQuaternion(f32t* x, f32t* y, f32t* z, f32t* w, u8t* data, int *i);
@@ -96,10 +107,14 @@ void U16_UDP(u16t val, u8t* data, int *i);
 void UDP_U16(u16t* val, u8t* data, int *i);
 void IPPORT_UDP(u16t val, u8t* data, int *i);
 void UDP_IPPORT(u16t* val, u8t* data, int *i);
+void IPADDR_UDP(u32t val, u8t* data, int *i);
+void UDP_IPADDR(u32t *val, u8t* data, int *i);
 void U8_UDP(u8t val, u8t* data, int *i);
 void UDP_U8(u8t* val, u8t* data, int *i);
 void S8_UDP(s8t val, u8t* data, int *i);
 void UDP_S8(s8t* val, u8t* data, int *i);
+void BOOL_UDP(int val, u8t* data, int *i);
+void UDP_BOOL(int* val, u8t* data, int *i);
 
 #if defined __cplusplus
     }

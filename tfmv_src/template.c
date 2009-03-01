@@ -41,6 +41,7 @@
 const int endian_test = 1;
 #define is_bigendian() ( (*(char*) &endian_test) == 0 )
 
+/*
 struct uuid {
     u32t time_low;
     u16t time_mid;
@@ -48,12 +49,14 @@ struct uuid {
     u16t clock_seq;
     u8t node[6];
 };
+*/
 
-void UUIDToString(char *val, const struct uuid *uu);
-void UUIDFromString(const char* data_ptr, struct uuid *uu);
+void UUIDToString(char *val, const uuid_t *uu);
+void UUIDFromString(const char* data_ptr, uuid_t *uu);
 char *UUIDFromBytes(int a, short b, short c, u8t *p);
 char *UUIDFromU64(u64t value);
 
+/*
 #define APPENDED_ACKS 0x10
 #define RESENT 0x20
 #define RELIABLE 0x40
@@ -61,6 +64,7 @@ char *UUIDFromU64(u64t value);
 #define Low 1
 #define Medium 2
 #define High 3
+*/
 
 
 void GetAcks(int* count, u32t* acks, int maxAcks, u8t* udpMessage, int udpMessageLength)
@@ -215,26 +219,29 @@ void Header_UDP(u8t* data, u16t packetId, int frequency, u8t flags)
     data[0] = flags;
     SetPacketID(data, frequency, packetId);
 }
-void UUIDToString(char *val, const struct uuid *uu)
+void UUIDToString(char *val, const uuid_t *uu)
 {
     if(val==NULL) return;
     sprintf(val, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
             uu->time_low, uu->time_mid, uu->time_hi_and_version,
-            uu->clock_seq >> 8, uu->clock_seq & 0xFF,
+            uu->clock_seq_hi_and_reserved, uu->clock_seq_low,
             uu->node[0], uu->node[1], uu->node[2],
             uu->node[3], uu->node[4], uu->node[5]);
 }
 
-void UUIDFromString(const char* data_ptr, struct uuid *uu)
+void UUIDFromString(const char* data_ptr, uuid_t *uu)
 {
     int i;
-	char buf[3];
+    char buf[3];
     const char *cp;
+    u16t cseq;
 
 	uu->time_low = strtoul(data_ptr, NULL, 16);
 	uu->time_mid = (u16t) strtoul(data_ptr+9, NULL, 16);
 	uu->time_hi_and_version = (u16t) strtoul(data_ptr+14, NULL, 16);
-	uu->clock_seq = (u16t) strtoul(data_ptr+19, NULL, 16);
+	cseq = (u16t) strtoul(data_ptr+19, NULL, 16);
+	uu->clock_seq_hi_and_reserved = cseq >> 8;
+	uu->clock_seq_low = cseq & 0xFF;
 	cp = data_ptr+24;
 	buf[2] = 0;
 	for (i=0; i < 6; i++) {
@@ -248,11 +255,12 @@ char *UUIDFromBytes(int a, short b, short c, u8t *p)
 {
     int i;
     char *output;
-    struct uuid uu;
+    uuid_t uu;
     uu.time_low=a;
     uu.time_mid=b;
     uu.time_hi_and_version=c;
-    uu.clock_seq=256*p[0]+p[1];
+    uu.clock_seq_hi_and_reserved=p[0];
+    uu.clock_seq_low = p[1];
     for(i=0; i<6; i++) uu.node[i]=p[2+i];
 /*    for(i=2; i<6; i++) uu.node[i]=0;*/
     output=(char *) malloc(40);
@@ -265,12 +273,9 @@ char *UUIDFromU64(u64t value)
     return UUIDFromBytes(0,0,0,(u8t *) &value);
 }
 
-void LLUUID_UDP(const char* uuid_string, u8t* data, int *i)
+void LLUUID_UDP(uuid_t uu, u8t* data, int *i)
 {
     int tmp;
-    struct uuid uu;
-
-    UUIDFromString(uuid_string, &uu);
 
     tmp = uu.time_low; 
     data[*i+3] = (u8t) tmp;
@@ -286,36 +291,48 @@ void LLUUID_UDP(const char* uuid_string, u8t* data, int *i)
     data[*i+7] = (u8t) tmp;
     tmp >>= 8; data[*i+6] = (u8t) tmp;
 
-    tmp = uu.clock_seq;
-    data[*i+9] = (u8t) tmp;
-    tmp >>= 8; data[*i+8] = (u8t) tmp;
+    data[*i+8] = (u8t) uu.clock_seq_hi_and_reserved;
+    data[*i+9] = (u8t) uu.clock_seq_low;
 
     memcpy(&data[*i+10], uu.node, 6);
 
     *i+=16;
 }
 
-void UDP_LLUUID(char* uuid_string, u8t* data, int *i)
+void LLUUIDS_UDP(const char* uuid_string, u8t* data, int *i)
 {
-    struct uuid uu;
+    uuid_t uu;
+
+    UUIDFromString(uuid_string, &uu);
+    LLUUID_UDP(uu, data, i);
+}
+
+void UDP_LLUUID(uuid_t *uu, u8t* data, int *i)
+{
     int tmp = data[*i];
     tmp = (tmp << 8) | data[*i+1];
     tmp = (tmp << 8) | data[*i+2];
     tmp = (tmp << 8) | data[*i+3];
-    uu.time_low = tmp;
+    uu->time_low = tmp;
     tmp = data[*i+4];
     tmp = (tmp << 8) | data[*i+5];
-    uu.time_mid = tmp;
+    uu->time_mid = tmp;
     tmp = data[*i+6];
     tmp = (tmp << 8) | data[*i+7];
-    uu.time_hi_and_version = tmp;
+    uu->time_hi_and_version = tmp;
     tmp = data[*i+8];
-    tmp = (tmp << 8) | data[*i+9];
-    uu.clock_seq = tmp;
-    memcpy(&uu.node, &data[*i+10], 6);
+    uu->clock_seq_hi_and_reserved = data[*i+8];
+    uu->clock_seq_low = data[*i+9];
+    memcpy(&uu->node, &data[*i+10], 6);
 
-    UUIDToString(uuid_string, &uu);
     *i+=16;
+}
+
+void UDP_LLUUIDS(char* uuid_string, u8t* data, int *i)
+{
+    uuid_t uu;
+    UDP_LLUUID(&uu, data, i);
+    UUIDToString(uuid_string, &uu);
 }
 
 /* Variable values are always passed as a pair (ptr, length). */
@@ -333,14 +350,18 @@ void Variable2_UDP(const char *val, int length, u8t* data, int *i)
 }
 
 /* return the length, and make the value also a C string, just in case */
-int UDP_Variable2(char *val, u8t* data, int *i)
+int UDP_Variable2(char *val, int maxlen, u8t* data, int *i)
 {
     int length = (int) (data[*i + 0] + data[*i + 1] * 256);
+    int copylength = length;
     if(val != NULL) {
+      if (copylength > maxlen - 1) {
+        copylength = maxlen - 1;
+      }
       *i+=2;
-      memcpy(val, &data[*i], length);
+      memcpy(val, &data[*i], copylength);
       *i+=length;
-      val[length]='\0'; /* make this a C string */
+      val[copylength]='\0'; /* make this a C string */
     }
     return length;
 }
@@ -357,14 +378,18 @@ void Variable1_UDP(const char *val, int length, u8t* data, int *i)
     }
 }
 /* return length of data only, not advancing in case val is NULL */
-int UDP_Variable1(char *val, u8t* data, int *i)
+int UDP_Variable1(char *val, int maxlen, u8t* data, int *i)
 {
     int length = (int) data[*i];
+    int copylength = length;
     if (val != NULL) {
+      if (copylength > maxlen - 1) {
+        copylength = maxlen - 1;
+      }
       *i+=1;
-      memcpy(val, &data[*i], length);
+      memcpy(val, &data[*i], copylength);
       *i+=length;
-      val[length]='\0'; /* make this a C string */
+      val[copylength]='\0'; /* make this a C string */
     }
     return length;
 }
@@ -664,6 +689,17 @@ void UDP_IPPORT(u16t* val, u8t* data, int* i) {
     *i+=2;
 }
 
+void IPADDR_UDP(u32t val, u8t* data, int *i)
+{
+  U32_UDP(val, data, i);
+}
+
+void UDP_IPADDR(u32t *val, u8t* data, int *i)
+{
+  UDP_U32(val, data, i);
+}
+
+
 void U8_UDP(u8t val, u8t* data, int *i)
 {
     data[*i] = val;
@@ -688,4 +724,15 @@ void UDP_S8(s8t* val, u8t* data, int *i)
     *i+=1;
 }
 
+void BOOL_UDP(int val, u8t* data, int *i)
+{
+  U8_UDP(val == 1, data, i);
+}
+
+void UDP_BOOL(int* val, u8t* data, int *i)
+{
+  u8t b;
+  UDP_U8(&b, data, i);
+  *val = b;
+}
 

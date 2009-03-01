@@ -202,6 +202,8 @@ map_pkt_type_sz = {
   Fixed = 10,
   Medium = 8,
   High = 7,
+  -- special values
+  Variable = -1,
   -- normal types
   S8  = 1,
   S16 = 2,
@@ -243,6 +245,20 @@ function wrap_header(name, innercontent)
     innercontent ..
     "#endif /* " .. hname .. " */\n\n"
   return output 
+end
+
+function CodeArrayFieldStr(field)
+  local out
+  if field.type == "Fixed" then
+    out = field.name .. ", " .. field.name .. "_sz_" .. field.len
+  else -- if field.type == "Variable" then
+    if field.len == 1 then
+      out = field.name .. ", " .. field.name .. "_szV1"
+    else
+      out = field.name .. ", " .. field.name .. "_szV2"
+    end
+  end
+  return out
 end
 
 function HeaderArrayFieldStr(field, byref)
@@ -298,6 +314,26 @@ function HeaderFieldStr(field, byref)
   return "\n                " .. out;
 end
 
+function CodeFieldStr(field)
+  local mtype = map_pkt_types[field.type]
+  local out 
+  if mtype then
+    out = field.name
+  elseif field.type == "LLVector3" then
+    out = HeaderVectorFieldStr(field, "", "", nil)
+  elseif field.type == "LLQuaternion" then
+    out = HeaderVectorFieldStr(field, "", "", "w")
+  elseif field.type == "LLVector4" then
+    out = HeaderVectorFieldStr(field, "", "", "s")
+  elseif field.type == "LLVector3d" then
+    out = HeaderVectorFieldStr(field, "", "", nil)
+  else -- fixed and variable array are represented by ptr+len
+    out = CodeArrayFieldStr(field, byref)
+  end
+  return out
+end
+
+-- pass the size/max size of the buffer too
 common_args = "u8t *data, unsigned int dsize"
 
 function HeaderBlockPrototype(otab, block, prefix, suffix, byref)
@@ -330,21 +366,6 @@ function EndCode(otab)
   otab.p("}\n\n")
 end
 
-function CodeN(otab, block)
-end
-
-function GetBlockSize(block)
-  local size = 0
-  for i, field in ipairs(block.fields) do
-    local sz = size_of(field.type)
-    if sz then
-      size = size + sz
-    else
-    end
-  end
-  return size
-end
-
 function CodePacketHeader(otab, packet, prototype_only)
   if NeedCode(otab, prototype_only) then
     local flags = "0|RELIABLE"
@@ -357,12 +378,22 @@ function CodePacketHeader(otab, packet, prototype_only)
   end
 end
 
+function FieldTypeName(field)
+  local res
+  if field.type == "Variable" then
+    return field.type .. tostring(field.len)
+  else
+    return field.type
+  end
+end
+
 function CodeFieldToUdp(otab, field)
-  otab.p("  " .. field.type .. "_UDP(" .. field.name .. ", data, &n);\n")
+  otab.p("  " .. FieldTypeName(field) .. "_UDP(" .. CodeFieldStr(field) .. ", data, &n);\n")
 end
 
 function CodeFieldFromUdp(otab, field)
-  otab.p("  UDP_" .. field.type .. "(" .. field.name .. ", data, &n);\n")
+  local ftype = field.type
+  otab.p("  UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field) .. ", data, &n);\n")
 end
 
 function BlockFieldsForeach(otab, block, func)
@@ -371,21 +402,71 @@ function BlockFieldsForeach(otab, block, func)
   end
 end
 
-function CodeN(otab, block)
+function CodeN_only(otab, block)
   local prevblock = block.prevblock
-  otab.p("  int n=" .. size_of(block.packet.freq) .. ";\n")
-  if not (block.count == 1) then
-    otab.p("  int off;\n")
-  end
+  otab.p("  int n = " .. size_of(block.packet.freq) .. ";\n")
 
   while prevblock do
-    otab.p("  n += " .. prevblock.fullname .. "_Length(data);\n")
+    otab.p("  n += " .. prevblock.fullname .. "_Length(data, dsize);\n")
     prevblock = prevblock.prevblock
   end
+end
 
+
+-- position the "n" onto the start of
+-- current data element in a block array
+
+function CodeOff_only(otab, block, limit_var)
+  local size = 0
+  local need_prologue = true
+  local flushsz = function(otab, size)
+    if size > 0 then
+      otab.p("      n += " .. tostring(size) .. ";\n")
+    end
+  end
+  if block.count < 0 then
+    -- variable sized block have length as first item
+    otab.p("  /* variable-sized block  - skip the length */\n")
+    otab.p("  n++;\n");
+  end
+  
+  for i, field in ipairs(block.fields) do
+    local sz = size_of(field.type)
+    if sz and sz > 0 then
+      size = size + sz
+    else
+      -- encountered a variable field, so will
+      -- need to have a cycle to position the offset
+      -- size till now has a size before the variable-sized element
+      if need_prologue then
+        otab.p("  { int j; \n    for(j=0; j<" .. limit_var .. "; j++) {\n")
+        need_prologue = false;
+      end
+      flushsz(otab, size)
+      size = 0
+      otab.p("      /* " .. field.name .. " : " .. field.type .. " " .. field.len .. " */\n")
+      if (field.len == 1) then
+        otab.p("      n += 1 + data[n];\n")
+      else
+        otab.p("      n += 2 + data[n] + 256 * data[n+1];\n")
+      end
+    end
+  end
+  -- no prologue means entire size is inside the "size" var = static, can do multiply
+  if need_prologue then
+    if size > 0 then
+      otab.p("  n += (" .. size .. " * " .. limit_var .. ");\n")
+    end
+  else
+    flushsz(otab, size)
+    otab.p("    }\n  }\n")
+  end
+end
+
+function CodeN(otab, block)
+  CodeN_only(otab, block)
   if not (block.count == 1) then
-    otab.p("  off = " .. GetBlockSize(block) .. "; ")
-    otab.p("n += (off * index);\n")
+    CodeOff_only(otab, block, "index")
   end
 end
 
@@ -407,37 +488,68 @@ end
 
 function CodeSetVariableBlockSize(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
-    CodeN(otab, block);
+    CodeN_only(otab, block);
+    otab.p("  data[n] = (u8t) length;\n")
     EndCode(otab)
   end
 end
 
 function CodeSetVariableBlock(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
+    CodeN(otab, block);
+    BlockFieldsForeach(otab, block, CodeFieldToUdp)
     EndCode(otab)
   end
 end
 
 function CodeGetVariableBlockSize(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
+    CodeN_only(otab, block);
+    otab.p("  return (unsigned int)data[n];\n")
     EndCode(otab)
   end
 end
 
 function CodeGetVariableBlock(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
+    CodeN(otab, block);
+    BlockFieldsForeach(otab, block, CodeFieldFromUdp)
     EndCode(otab)
   end
 end
 
 function CodeGetBlockLength(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
+    if block.count == 1 then
+      otab.p("  int sn;\n");
+      CodeN_only(otab, block);
+      otab.p("  sn = n;\n");
+      CodeOff_only(otab, block, "1");      
+      otab.p("  return (n-sn);\n");
+    else 
+      otab.p("  int sn, sx;\n");
+      CodeN_only(otab, block);
+      otab.p("  sn = n;\n");
+      otab.p("  /* block count: " .. tostring(block.count) .. " */\n")
+      if block.count > 0 then
+        otab.p("  sx = " .. tostring(block.count) .. ";\n");
+      else
+        otab.p("  sx = data[n];\n");
+      end
+      CodeOff_only(otab, block, "sx");      
+      otab.p("  return (n-sn);\n");
+    end
     EndCode(otab)
   end
 end
 
 function CodeGetPacketLength(otab, packet, prototype_only)
   if NeedCode(otab, prototype_only) then
+    otab.p("  int n = " .. size_of(packet.freq) .. ";\n")
+    for i, block in ipairs(packet.blocks) do
+      otab.p("  n += " .. block.fullname .. "_Length(data, dsize);\n")
+    end
+    otab.p("  return n;\n")
     EndCode(otab)
   end
 end
@@ -445,7 +557,7 @@ end
 
 ---- master function for header and code
 function HeaderCodePacket(otab, packet, prototype_only)
-  -- output the base (blocks)
+  -- Packet header (fixed flags, etc)
   HeaderPacketPrototype(otab, packet, "void\n", "Header")
   CodePacketHeader(otab, packet, prototype_only)
 
@@ -467,7 +579,7 @@ function HeaderCodePacket(otab, packet, prototype_only)
       otab.p("unsigned int\nGet_" .. block.fullname .. "BlockSize(" .. 
                         common_args .. ")")
       CodeGetVariableBlockSize(otab, block, prototype_only)
-      HeaderBlockPrototype(otab, block, "void\nGet_", "", true)
+      HeaderBlockPrototype(otab, block, "void\nGet_", "Block", true)
       CodeGetVariableBlock(otab, block, prototype_only)
     end
     otab.p("int\n" .. block.fullname .. "_Length(" .. common_args .. ")")
@@ -504,7 +616,7 @@ function Header(name, packets)
      HeaderCodePacket(otab, packet, true)
      otab.p("/************ END PACKET: " .. packet.name .. " */\n")
   end
-xx_remove_after_production= [[
+  --xx_remove_after_production= [[
   -- output the enum for packet types
   otab.p("\n\n")
   otab.p("enum PacketType {\n") 
@@ -513,7 +625,7 @@ xx_remove_after_production= [[
   end
   otab.p("  EndOfPackEnums\n")
   otab.p("};\n\n")
-  ]]
+  --  ]]
 
   -- declarations of the C functions
   -- FunctionStatements(otab, false, packets)
@@ -532,7 +644,7 @@ end
 function GenCode(packets)
   local otab = StringAccumulator()
 
-  otab.p('#include "fmv.h"\n')
+  otab.p('#include "trans_fmv.h"\n')
 
   otab.p("\n\n")
 

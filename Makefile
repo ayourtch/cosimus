@@ -1,7 +1,9 @@
-all: supplib tst
+all: supplib tfmvlib tst
 
 supplib:
 	(cd supp_src; make)
+tfmvlib:
+	(cd tfmv_src; make)
 tst:
 	(cd test; make)
 
