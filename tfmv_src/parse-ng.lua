@@ -593,8 +593,7 @@ end
 function HeaderIncludes(otab)
   otab.p("#include <stdint.h>\n")
   otab.p("#include <strings.h>\n")
-  --otab.p('#include "pkt_server.h"\n')
-  otab.p('#include "template.h"\n')
+  otab.p('#include "sta_fmv.h"\n')
 
   otab.p("\n\n")
 end
@@ -608,6 +607,8 @@ function Header(name, packets)
   otab.p("/**** Auto-generated, do not edit! ****/\n\n")
   --otab.p("#pragma pack(1)\n\n")
   HeaderIncludes(otab)
+
+  otab.p("char *global_id_str(u32t global_id);\n");
 
   -- output packet-specific typedefs
   for i, packet in ipairs(packets) do
@@ -644,7 +645,7 @@ end
 function GenCode(packets)
   local otab = StringAccumulator()
 
-  otab.p('#include "trans_fmv.h"\n')
+  otab.p('#include "gen_fmv.h"\n')
 
   otab.p("\n\n")
 
@@ -652,6 +653,14 @@ function GenCode(packets)
     HeaderCodePacket(otab, packet, false)
   end
   otab.p("\n\n")
+  otab.p("char *global_id_str(u32t global_id) {\n");
+  otab.p("  switch(global_id) {\n");
+  for i, packet in ipairs(packets) do
+    otab.p("    case " .. packet.enum .. ": return \"" .. packet.enum .. "\";\n")
+  end
+  otab.p("    default: return \"unknown\";\n")
+
+  otab.p("  }\n}\n\n")
 
   print (otab.result())
 end

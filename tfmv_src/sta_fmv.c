@@ -36,7 +36,7 @@
 #include <math.h>
 #include <assert.h>
 
-#include "template.h"
+#include "sta_fmv.h"
 
 const int endian_test = 1;
 #define is_bigendian() ( (*(char*) &endian_test) == 0 )
@@ -192,6 +192,11 @@ u16t GetPacketID(u8t* data)
             return (u16t) data[7];
     }
     return (u16t) data[6];
+}
+
+u32t get_packet_global_id(u8t *data)
+{
+  return (((u32t)GetPacketFrequency(data)) << 16) | GetPacketID(data);
 }
 
 void SetPacketID(u8t* data, int frequency, u16t val)

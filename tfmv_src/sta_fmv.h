@@ -69,6 +69,7 @@ u32t GetSequenceNumber(u8t* data);
 void SetSequenceNumber(u8t* data, u32t seqNumber);
 u16t GetPacketFrequency(u8t* data);
 u16t GetPacketID(u8t* data);
+u32t get_packet_global_id(u8t *data);
 void SetPacketID(u8t* data, int frequency, u16t val);
 
 void Header_UDP(u8t* data, u16t packetId, int frequency, u8t flags);
