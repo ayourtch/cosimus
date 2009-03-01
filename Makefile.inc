@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS = -Wall -Werror -I../supp_src
+CFLAGS = -Wall -Werror -I../supp_src -I../fmv_src
 LDFLAGS = -rdynamic 
 CFLAGS += -g 
 
