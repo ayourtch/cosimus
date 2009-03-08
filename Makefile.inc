@@ -2,6 +2,7 @@ CC=gcc
 CFLAGS = -Wall -Werror -I../supp_src -I../fmv_src
 LDFLAGS = -rdynamic 
 CFLAGS += -g 
+LUA=../lua/lua-5.1.4/src/lua
 
 LIBS = -lssl -lm -L../supp_src -lsupp -L../fmv_src -lfmv
 

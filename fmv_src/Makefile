@@ -4,11 +4,11 @@ CFLAGS += -I../supp_src
 all: libfmv.so
 
 gen_fmv.h: message_template.msg parse-ng.lua
-	lua parse-ng.lua header message_template.msg >gen_fmv.h
+	$(LUA) parse-ng.lua header message_template.msg >gen_fmv.h
 
 
 gen_fmv.c: message_template.msg parse-ng.lua
-	lua parse-ng.lua code message_template.msg >gen_fmv.c
+	$(LUA) parse-ng.lua code message_template.msg >gen_fmv.c
 
 sta_fmv.o: sta_fmv.c sta_fmv.h
 	$(CC) -c $(CFLAGS) sta_fmv.c
