@@ -665,73 +665,6 @@ function GenCode(packets)
   print (otab.result())
 end
 
------------------------- LUA code -----------------------
---- B H L f d s c
-
-pointer_size = 4
-
-vwp_field = {
-           S8  = { size =  1, pack = 'b' },
-           S16 = { size =  2, pack = 'h' },
-           S32 = { size =  4, pack = 'l' },
-           U8  = { size =  1, pack = 'B' },
-           U16 = { size =  2, pack = 'H' },
-           U32 = { size =  4, pack = 'L' },
-           U64 = { size =  8, pack = 'LL'},
-           F32 = { size =  4, pack = 'f' },
-           F64 = { size =  8, pack = 'd' },
-        IPADDR = { size =  4, pack = 'L' },
-        IPPORT = { size =  2, pack = 'H' },
-        LLUUID = { size = 16, pack = 'c16' },
-          BOOL = { size =  1, pack = 'B' },
-     LLVector3 = { size = 12, pack = 'fff' }, 
-  LLQuaternion = { size = 16, pack = 'ffff' },
-     LLVector4 = { size = 16, pack = 'ffff' },
-    LLVector3s = { size = 24, pack = 'ddd' },
-      Variable = { size = pointer_size, pack = 'XXX' },
-}
-
-function LuaCodeField(otab, field)
-  local ft = field.type
-  local fn = field.name
-  local fl = field.len
-  otab.p("    " .. fn .. " = { ")
-  if vwp_field[ft] then
-    otab.p("'" .. vwp_field[ft].pack .. "'")
-    otab.p(", " .. tostring(otab.field_offset))
-    otab.p(", " .. tostring(vwp_field[ft].size))
-    otab.field_offset = otab.field_offset + vwp_field[ft].size
-  end
-  otab.p(" };");
-  otab.p(" ---- " .. fn .. " : " .. ft .. "[" .. tostring(fl) .. "]\n")
-end
-
-function LuaCodeBlock(otab, block)  
-  local start_offset = otab.field_offset 
-  local block_size = 0
-  otab.p("  " .. block.name .. " = {\n")
-  otab.p("    __count = " .. tostring(block.count) .. ";\n")
-  if block.count == -1 then
-    otab.p("    __offs = " .. tostring(start_offset) .. ";\n")
-    otab.field_offset = 0
-  end
-  for i, field in ipairs(block.fields) do
-    LuaCodeField(otab, field)
-  end
-  if block.count == -1 then
-    block_size = otab.field_offset
-    otab.field_offset = start_offset + pointer_size
-  else
-    block_size = otab.field_offset - start_offset
-  end
-  otab.p("    __size = " .. tostring(block_size) .. ";\n")
-  otab.p("  };\n")
-  if block.count > 1 then
-    otab.field_offset = start_offset + (block_size * block.count)
-  end
-end
-
-
 function LuaCodePacket(otab, packet)
   -- print(packet.enum)
   otab.field_offset = 0
@@ -739,7 +672,7 @@ function LuaCodePacket(otab, packet)
   otab.p("vwp[" .. packet.global_id .."] = '" .. packet.enum .. "'\n\n")
   otab.p("vwp.decode." .. packet.enum .. " = {\n")
   for i, block in ipairs(packet.blocks) do
-    LuaCodeBlock(otab, block) 
+    -- LuaCodeBlock(otab, block) 
   end
   otab.p("}\n")
   otab.p("vwp.decode[" .. packet.global_id .. "] = vwp.decode." .. packet.enum)
