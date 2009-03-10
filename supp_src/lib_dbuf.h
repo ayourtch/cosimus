@@ -123,6 +123,8 @@ dbuf_t *dstrcpy(const char *str);
 int dconcat(dbuf_t * target, dbuf_t * source);
 int dmemscan(dbuf_t * d, char c, int start);
 void print_dbufs(void);
+void print_dbuf(int logtype, int loglevel, dbuf_t * d);
+
 
 int dmemcat(dbuf_t * d, void *str, int total);
 int dstrcat(dbuf_t * d, char *str, int total);
