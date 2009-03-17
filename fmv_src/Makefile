@@ -13,10 +13,13 @@ gen_fmv.c: message_template.msg parse-ng.lua
 sta_fmv.o: sta_fmv.c sta_fmv.h
 	$(CC) -c $(CFLAGS) sta_fmv.c
 
+lua_fmv.o: lua_fmv.c lua_fmv.h
+	$(CC) -c $(CFLAGS) lua_fmv.c
+
 gen_fmv.o: gen_fmv.h gen_fmv.c sta_fmv.h
 	$(CC) -c $(CFLAGS) gen_fmv.c
 
-libfmv.so: gen_fmv.o sta_fmv.o
+libfmv.so: gen_fmv.o sta_fmv.o lua_fmv.o
 	$(CC) -shared -Wl,-soname,libfmv.so -o $@ $^
 	cp $@ ../lib/
 

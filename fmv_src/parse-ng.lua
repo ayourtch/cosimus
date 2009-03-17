@@ -334,7 +334,22 @@ function CodeFieldStr(field)
 end
 
 -- pass the size/max size of the buffer too
-common_args = "u8t *data, unsigned int dsize"
+common_args = "dbuf_t *d"
+lua_functions = {}
+
+function LuaAddFunction(name)
+  lua_functions[#lua_functions + 1] = name
+end
+
+function LuaStartFunc(otab, name)
+  LuaAddFunction(name)
+  otab.p('static int\nlua_fn_' .. name .. '(lua_State *L)\n{\n')
+  otab.p('  dbuf_t *d = luaL_checkuserdata(L, 1);\n')
+end
+
+function LuaEndFunc(otab, count)
+  otab.p('  return ' .. tostring(count) .. ';\n}\n')
+end
 
 function HeaderBlockPrototype(otab, block, prefix, suffix, byref)
   otab.p(prefix .. block.fullname .. suffix .. "(" .. common_args)
@@ -366,17 +381,28 @@ function EndCode(otab)
   otab.p("}\n\n")
 end
 
+function CoreCodePacketHeader(otab, packet)
+  local flags = "0|RELIABLE"
+  if packet.encoded then
+    flags = flags .. "|ZEROCODED"
+  end
+  otab.p("  Header_UDP(d->buf, " .. (ToNumber(packet.id) % 65536) .. ", " .. 
+            packet.freq .. ", " .. flags .. ");\n")
+end
+
 function CodePacketHeader(otab, packet, prototype_only)
   if NeedCode(otab, prototype_only) then
-    local flags = "0|RELIABLE"
-    if packet.encoded then
-      flags = flags .. "|ZEROCODED"
-    end
-    otab.p("  Header_UDP(data, " .. (ToNumber(packet.id) % 65536) .. ", " .. 
-              packet.freq .. ", " .. flags .. ");\n")
+    CoreCodePacketHeader(otab, packet)
     EndCode(otab)
   end
 end
+
+function LuaCodePacketHeader(otab, packet)
+  LuaStartFunc(otab, packet.name .. "Header")
+  CoreCodePacketHeader(otab, packet)
+  LuaEndFunc(otab, 0)
+end
+
 
 function FieldTypeName(field)
   local res
@@ -388,12 +414,12 @@ function FieldTypeName(field)
 end
 
 function CodeFieldToUdp(otab, field)
-  otab.p("  " .. FieldTypeName(field) .. "_UDP(" .. CodeFieldStr(field) .. ", data, &n);\n")
+  otab.p("  " .. FieldTypeName(field) .. "_UDP(" .. CodeFieldStr(field) .. ", d->buf, &n);\n")
 end
 
 function CodeFieldFromUdp(otab, field)
   local ftype = field.type
-  otab.p("  UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field) .. ", data, &n);\n")
+  otab.p("  UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field) .. ", d->buf, &n);\n")
 end
 
 function BlockFieldsForeach(otab, block, func)
@@ -407,7 +433,7 @@ function CodeN_only(otab, block)
   otab.p("  int n = " .. size_of(block.packet.freq) .. ";\n")
 
   while prevblock do
-    otab.p("  n += " .. prevblock.fullname .. "_Length(data, dsize);\n")
+    otab.p("  n += " .. prevblock.fullname .. "_Length(d);\n")
     prevblock = prevblock.prevblock
   end
 end
@@ -446,9 +472,9 @@ function CodeOff_only(otab, block, limit_var)
       size = 0
       otab.p("      /* " .. field.name .. " : " .. field.type .. " " .. field.len .. " */\n")
       if (field.len == 1) then
-        otab.p("      n += 1 + data[n];\n")
+        otab.p("      n += 1 + d->buf[n];\n")
       else
-        otab.p("      n += 2 + data[n] + 256 * data[n+1];\n")
+        otab.p("      n += 2 + d->buf[n] + 256 * d->buf[n+1];\n")
       end
     end
   end
@@ -489,7 +515,7 @@ end
 function CodeSetVariableBlockSize(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
     CodeN_only(otab, block);
-    otab.p("  data[n] = (u8t) length;\n")
+    otab.p("  d->buf[n] = (u8t) length;\n")
     EndCode(otab)
   end
 end
@@ -505,7 +531,7 @@ end
 function CodeGetVariableBlockSize(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
     CodeN_only(otab, block);
-    otab.p("  return (unsigned int)data[n];\n")
+    otab.p("  return (unsigned int)d->buf[n];\n")
     EndCode(otab)
   end
 end
@@ -534,7 +560,7 @@ function CodeGetBlockLength(otab, block, prototype_only)
       if block.count > 0 then
         otab.p("  sx = " .. tostring(block.count) .. ";\n");
       else
-        otab.p("  sx = data[n];\n");
+        otab.p("  sx = d->buf[n];\n");
       end
       CodeOff_only(otab, block, "sx");      
       otab.p("  return (n-sn);\n");
@@ -547,7 +573,7 @@ function CodeGetPacketLength(otab, packet, prototype_only)
   if NeedCode(otab, prototype_only) then
     otab.p("  int n = " .. size_of(packet.freq) .. ";\n")
     for i, block in ipairs(packet.blocks) do
-      otab.p("  n += " .. block.fullname .. "_Length(data, dsize);\n")
+      otab.p("  n += " .. block.fullname .. "_Length(d);\n")
     end
     otab.p("  return n;\n")
     EndCode(otab)
@@ -560,6 +586,9 @@ function HeaderCodePacket(otab, packet, prototype_only)
   -- Packet header (fixed flags, etc)
   HeaderPacketPrototype(otab, packet, "void\n", "Header")
   CodePacketHeader(otab, packet, prototype_only)
+  if not prototype_only then
+    LuaCodePacketHeader(otab, packet)
+  end
 
   for i, block in ipairs(packet.blocks) do
     otab.p(" // --- size: " .. block.count .. "\n")
@@ -593,6 +622,9 @@ end
 function HeaderIncludes(otab)
   otab.p("#include <stdint.h>\n")
   otab.p("#include <strings.h>\n")
+  otab.p('#include "lib_dbuf.h"\n')
+  otab.p('#include "lua.h"\n')
+  otab.p('#include "lua_fmv.h"\n')
   otab.p('#include "sta_fmv.h"\n')
 
   otab.p("\n\n")
@@ -646,12 +678,17 @@ function GenCode(packets)
   local otab = StringAccumulator()
 
   otab.p('#include "gen_fmv.h"\n')
+  otab.p('#include <lauxlib.h>\n')
+  otab.p('#include <lualib.h>\n')
+
 
   otab.p("\n\n")
 
   for i, packet in ipairs(packets) do
     HeaderCodePacket(otab, packet, false)
   end
+
+  -- big enum function
   otab.p("\n\n")
   otab.p("char *global_id_str(u32t global_id) {\n");
   otab.p("  switch(global_id) {\n");
@@ -662,45 +699,20 @@ function GenCode(packets)
 
   otab.p("  }\n}\n\n")
 
-  print (otab.result())
-end
+  -- lua registration data and function
 
-function LuaCodePacket(otab, packet)
-  -- print(packet.enum)
-  otab.field_offset = 0
-  otab.p("\n\nvwp." .. packet.enum .." = " .. packet.global_id .. "\n")
-  otab.p("vwp[" .. packet.global_id .."] = '" .. packet.enum .. "'\n\n")
-  otab.p("vwp.decode." .. packet.enum .. " = {\n")
-  for i, block in ipairs(packet.blocks) do
-    -- LuaCodeBlock(otab, block) 
+  otab.p("\n\nstatic const luaL_reg fmvlib[] = {\n")
+  for i, fname in ipairs(lua_functions) do
+    otab.p('  { "' .. fname .. '", lua_fn_' .. fname .. ' },\n')
   end
-  otab.p("}\n")
-  otab.p("vwp.decode[" .. packet.global_id .. "] = vwp.decode." .. packet.enum)
-  otab.p("\n")
-end
+  otab.p('  { NULL, NULL }\n')
+  otab.p('};\n\n')
 
-function GenLuaCode(packets)
-  local otab = StringAccumulator()
+  otab.p('LUA_API int luaopen_libfmv (lua_State *L) {\n')
+  otab.p('  luaL_openlib(L, "fmv", fmvlib, 0);\n')
+  otab.p('  return 1;\n')
+  otab.p('}\n\n\n')
 
-  --CodeIncludes(otab)
-
-  otab.p("\n\n")
-  otab.p("vwp = {}\n")
-  otab.p("vwp.mt = {}\n")
-  otab.p("vwp.decode = {}\n")
-
-  -- per-message (local) code
-
-
-  for i, packet in ipairs(packets) do
-    if i > -1 then
-      LuaCodePacket(otab, packet)
-    end
-  end
-  otab.p("\n\n")
-
-  -- common stuff (exported)
-  --FunctionStatements(otab, true, packets)
 
   print (otab.result())
 end
@@ -724,8 +736,6 @@ if action and filename then
     GenHeader(packets)
   elseif action == 'code' then
     GenCode(packets)
-  elseif action == 'lua-code' then
-    GenLuaCode(packets)
   else 
     print "Unknown action!"
     assert(nil)
