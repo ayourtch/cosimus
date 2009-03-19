@@ -2,7 +2,7 @@ all: lua
 
 lua:
 	tar xzvf lua-5.1.4.tar.gz
-	(cd lua-5.1.4; make linux)
+	(cd lua-5.1.4; make posix)
 
 clean:
 	rm -rf lua-5.1.4
