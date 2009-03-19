@@ -28,6 +28,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef _STA_FMV_H_
+#define _STA_FMV_H_
+
 #if defined __cplusplus
         extern "C" {
 #endif
@@ -122,7 +125,12 @@ void UDP_BOOL(int* val, u8t* data, int *i);
 
 dbuf_t *ZeroEncodePacket(dbuf_t *d);
 dbuf_t *ZeroDecodePacket(dbuf_t *d);
+dbuf_t *MaybeZeroEncodePacket(dbuf_t *d);
+dbuf_t *MaybeZeroDecodePacket(dbuf_t *d);
+
 
 #if defined __cplusplus
     }
 #endif
+
+#endif /* _STA_FMV_H_ */

@@ -846,3 +846,25 @@ dbuf_t *ZeroDecodePacket(dbuf_t *d)
     return d1;
 }
 
+dbuf_t *
+MaybeZeroEncodePacket(dbuf_t *d) {
+  dbuf_t *d1;
+  if(IsZeroCoded(d->buf)) {
+    d1 = ZeroEncodePacket(d);
+  } else {
+    d1 = dlock(d);
+  }
+  return d1;
+}
+
+dbuf_t *
+MaybeZeroDecodePacket(dbuf_t *d) {
+  dbuf_t *d1;
+  if(IsZeroCoded(d->buf)) {
+    d1 = ZeroDecodePacket(d);
+  } else {
+    d1 = dlock(d);
+  }
+  return d1;
+}
+
