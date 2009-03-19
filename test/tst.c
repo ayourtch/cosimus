@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
   http_start_listener("127.0.0.1", 12345, NULL);
   http_start_listener("127.0.0.1", 12346, NULL);
   while (1) {
-    sock_one_cycle(1000);
+    sock_one_cycle(1000, NULL);
   }
   return 1;
 }
