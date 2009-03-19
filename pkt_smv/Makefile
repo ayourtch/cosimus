@@ -1,9 +1,9 @@
 include ../Makefile.inc
 
-all: pkt-smv
+all: pkt-smv.so
 
-pkt-smv: pkt-smv.o
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+pkt-smv.so: pkt-smv.o
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$@ -o $@ $^ $(LIBS)
 
 clean:
-	rm -f *.o pkt-smv
+	rm -f *.o pkt-smv.so
