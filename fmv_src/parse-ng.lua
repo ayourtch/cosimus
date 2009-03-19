@@ -196,6 +196,22 @@ map_pkt_types = {
   BOOL   = 'int'
 }
 
+map_lua_int = {
+  S8  = true,
+  S16 = true,
+  S32 = true,
+  U8  = true,
+  U16 = true,
+  U32 = true,
+  -- U64 = true,
+  -- F32  = 'f32t',
+  -- F64  = 'f64t',
+  -- IPADDR = 'u32t',
+  -- IPPORT = 'u16t',
+  -- LLUUID = 'uuid_t',
+  BOOL   = true
+}
+
 map_pkt_type_sz = {
   -- packet headers
   Low = 10,
@@ -360,6 +376,17 @@ function LuaDefineFieldStr(field)
   return out
 end
 
+function LuaPopFieldStr(field)
+  local m_int = map_lua_int[field.type]
+  local out
+  if m_int then
+    out = field.name .. ' = luaL_checkint(L, lua_argn++);'
+  else 
+    out = '/* fixme LuaPopFieldStr: ' .. field.name .. '*/'
+  end
+  return out
+end
+
 -- pass the size/max size of the buffer too
 common_args = "dbuf_t *d"
 lua_functions = {}
@@ -451,6 +478,7 @@ end
 function LuaCodeFieldToUdp(otab, field)
   otab.p("  {\n")
   otab.p("    " .. LuaDefineFieldStr(field) .. ";\n")
+  otab.p("    " .. LuaPopFieldStr(field) .. "\n")
   otab.p("    " .. FieldTypeName(field) .. "_UDP(" .. CodeFieldStr(field) .. ", d->buf, &n);\n")
   otab.p("  }\n")
 end
@@ -573,12 +601,26 @@ function CodeSetVariableBlockSize(otab, block, prototype_only)
   end
 end
 
+function LuaCodeSetVariableBlockSize(otab, block)
+  LuaStartFunc(otab, block.fullname .. "BlockSize")
+  otab.p("  int size = luaL_checkint(L, lua_argn++);\n")
+  otab.p("  " .. block.fullname .. "BlockSize(d, size);\n")
+  LuaEndFunc(otab, 0)
+end
+
 function CodeSetVariableBlock(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
     CodeN(otab, block);
     BlockFieldsForeach(otab, block, CodeFieldToUdp)
     EndCode(otab)
   end
+end
+
+function LuaCodeSetVariableBlock(otab, block)
+  LuaStartFunc(otab, block.fullname .. "Block")
+  LuaCodeN(otab, block);
+  BlockFieldsForeach(otab, block, LuaCodeFieldToUdp)
+  LuaEndFunc(otab, 0)
 end
 
 function CodeGetVariableBlockSize(otab, block, prototype_only)
@@ -659,8 +701,15 @@ function HeaderCodePacket(otab, packet, prototype_only)
       otab.p("void\n" .. block.fullname .. "BlockSize(" .. 
                         common_args .. ", unsigned int length)")
       CodeSetVariableBlockSize(otab, block, prototype_only)
+      if not prototype_only then
+        LuaCodeSetVariableBlockSize(otab, block)
+      end
+
       HeaderBlockPrototype(otab, block, "void\n", "Block", false)
       CodeSetVariableBlock(otab, block, prototype_only)
+      if not prototype_only then
+        LuaCodeSetVariableBlock(otab, block)
+      end
       otab.p("unsigned int\nGet_" .. block.fullname .. "BlockSize(" .. 
                         common_args .. ")")
       CodeGetVariableBlockSize(otab, block, prototype_only)
