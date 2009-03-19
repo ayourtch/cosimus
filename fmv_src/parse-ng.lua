@@ -403,7 +403,7 @@ function LuaStartFunc(otab, name)
 end
 
 function LuaEndFunc(otab, count)
-  otab.p('  return ' .. tostring(count) .. ';\n}\n')
+  otab.p('  return ' .. tostring(count) .. ';\n}\n\n')
 end
 
 function HeaderBlockPrototype(otab, block, prefix, suffix, byref)
@@ -631,6 +631,13 @@ function CodeGetVariableBlockSize(otab, block, prototype_only)
   end
 end
 
+function LuaCodeGetVariableBlockSize(otab, block)
+  LuaStartFunc(otab, "Get_" .. block.fullname .. "BlockSize")
+  otab.p("  int len = Get_" .. block.fullname .. "BlockSize(d);\n")
+  otab.p("  lua_pushnumber(L, len);\n") 
+  LuaEndFunc(otab, 1)
+end
+
 function CodeGetVariableBlock(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
     CodeN(otab, block);
@@ -664,6 +671,13 @@ function CodeGetBlockLength(otab, block, prototype_only)
   end
 end
 
+function LuaCodeGetBlockLength(otab, block)
+  LuaStartFunc(otab, block.fullname .. "_Length")
+  otab.p("  int len = " .. block.fullname .. "_Length(d);\n")
+  otab.p("  lua_pushnumber(L, len);\n") 
+  LuaEndFunc(otab, 1)
+end
+
 function CodeGetPacketLength(otab, packet, prototype_only)
   if NeedCode(otab, prototype_only) then
     otab.p("  int n = " .. size_of(packet.freq) .. ";\n")
@@ -673,6 +687,13 @@ function CodeGetPacketLength(otab, packet, prototype_only)
     otab.p("  return n;\n")
     EndCode(otab)
   end
+end
+
+function LuaCodeGetPacketLength(otab, packet)
+  LuaStartFunc(otab, packet.name .. "Length")
+  otab.p("  int len = " .. packet.name .. "Length(d);\n")
+  otab.p("  lua_pushnumber(L, len);\n") 
+  LuaEndFunc(otab, 1)
 end
 
 
@@ -713,14 +734,24 @@ function HeaderCodePacket(otab, packet, prototype_only)
       otab.p("unsigned int\nGet_" .. block.fullname .. "BlockSize(" .. 
                         common_args .. ")")
       CodeGetVariableBlockSize(otab, block, prototype_only)
+      if not prototype_only then
+        LuaCodeGetVariableBlockSize(otab, block)
+      end
+
       HeaderBlockPrototype(otab, block, "void\nGet_", "Block", true)
       CodeGetVariableBlock(otab, block, prototype_only)
     end
     otab.p("int\n" .. block.fullname .. "_Length(" .. common_args .. ")")
     CodeGetBlockLength(otab, block, prototype_only)
+    if not prototype_only then
+      LuaCodeGetBlockLength(otab, block)
+    end
   end
   HeaderPacketPrototype(otab, packet, "int\n", "Length")
   CodeGetPacketLength(otab, packet, prototype_only)
+  if not prototype_only then
+    LuaCodeGetPacketLength(otab, packet)
+  end
 end
 
 
