@@ -2,7 +2,7 @@ require 'libfmv'
 require 'libsupp'
 require 'pkt-smv'
 
-smv_sessions = []
+smv_sessions = {}
 zero_uuid = "00000000-0000-0000-0000-000000000000"
 
 function cr()
@@ -80,7 +80,7 @@ function smv_packet(idx, d)
     if(smv_sessions[session_id]) then
       print("Duplicate usecircuitcode!\n")
     else
-      local sess = []
+      local sess = {}
       smv_sessions[session_id] = sess
       sess.idx = idx
       sess.circuit_code = circuit_code
