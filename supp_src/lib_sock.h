@@ -72,6 +72,9 @@ int init_ssl(char *cert_file_svr, char *key_file_svr, char *cert_file_clt,
 dbuf_t *cdata_get_appdata_dbuf(int idx, const char *appdata_sig);
 void cdata_set_appdata_dbuf(int idx, dbuf_t *d);
 
+int cdata_get_remote4(int idx, uint32_t *addr, uint16_t *port);
+
+
 sock_handlers_t *cdata_get_handlers(int idx);
 
 void close_idx(int idx, void *u_ptr);

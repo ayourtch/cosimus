@@ -145,6 +145,17 @@ cdata_get_handlers(int idx)
   return &cdata[idx].handlers;
 }
 
+int 
+cdata_get_remote4(int idx, uint32_t *addr, uint16_t *port) {
+  if (addr) {
+    *addr = *((uint32_t *) (&cdata[idx].remote.sin_addr)); 
+  }
+  if (port) {
+    *port = (uint16_t) cdata[idx].remote.sin_port;
+  }
+  return 1;
+}
+
 
 /*@}*/
 
