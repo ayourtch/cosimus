@@ -1061,6 +1061,7 @@ function GenCode(packets)
 
   otab.p('LUA_API int luaopen_libfmv (lua_State *L) {\n')
   otab.p('  luaL_openlib(L, "fmv", fmvlib, 0);\n')
+  otab.p('  luaL_openlib(L, "fmv", fmv_sta_lib, 0);\n')
   otab.p('  return 1;\n')
   otab.p('}\n\n\n')
 

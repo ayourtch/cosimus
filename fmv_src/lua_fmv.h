@@ -7,5 +7,6 @@
 
 
 void *luaL_checkuserdata(lua_State *L, int n);
+extern const luaL_reg fmv_sta_lib[];
 
 #endif

@@ -20,7 +20,7 @@ gen_fmv.o: gen_fmv.h gen_fmv.c sta_fmv.h
 	$(CC) -c $(CFLAGS) gen_fmv.c
 
 libfmv.so: gen_fmv.o sta_fmv.o lua_fmv.o
-	$(CC) -shared -Wl,-soname,libfmv.so -o $@ $^
+	$(CC) -shared -Wl,-soname,libfmv.so -o $@ $^ $(LIBS)
 	cp $@ ../lib/
 
 clean:
