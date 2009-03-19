@@ -17,7 +17,7 @@ static void *lua_checkdbuf(lua_State *L, int index)
 
 }
 
-static int fn_set_debug_level(lua_State *L)
+static int lua_fn_set_debug_level(lua_State *L)
 {
   int dbg = luaL_checkint(L, 1);
   int level = luaL_checkint(L, 2);
@@ -26,7 +26,7 @@ static int fn_set_debug_level(lua_State *L)
   return 1;
 }
 
-static int fn_print_dbuf(lua_State *L)
+static int lua_fn_print_dbuf(lua_State *L)
 {
   int logtype = luaL_checkint(L, 1);
   int loglevel = luaL_checkint(L, 2);
@@ -35,7 +35,7 @@ static int fn_print_dbuf(lua_State *L)
   return 0;
 }
 
-static int fn_dalloc(lua_State *L)
+static int lua_fn_dalloc(lua_State *L)
 {
   int size = luaL_checkint(L, 1);
   dbuf_t *d = dalloc(size);
@@ -43,14 +43,14 @@ static int fn_dalloc(lua_State *L)
   return 1;
 }
 
-static int fn_dunlock(lua_State *L)
+static int lua_fn_dunlock(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
   dunlock(d);
   return 0;
 }
 
-static int fn_dlock(lua_State *L)
+static int lua_fn_dlock(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
   dlock(d);
@@ -58,7 +58,7 @@ static int fn_dlock(lua_State *L)
   return 1;
 }
 
-static int fn_dstr(lua_State *L)
+static int lua_fn_dstr(lua_State *L)
 {
   int len;
   const char *str = luaL_checklstring(L, 1, &len);
@@ -68,14 +68,14 @@ static int fn_dstr(lua_State *L)
   return 1;
 }
 
-static int fn_dgetstr(lua_State *L)
+static int lua_fn_dgetstr(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
   lua_pushlstring(L, d->buf, d->dsize);
   return 1;
 }
 
-static int fn_dstrcat(lua_State *L)
+static int lua_fn_dstrcat(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
   int len;
@@ -86,7 +86,7 @@ static int fn_dstrcat(lua_State *L)
 }
 
 static int 
-fn_cdata_get_remote4(lua_State *L) {
+lua_fn_cdata_get_remote4(lua_State *L) {
   int idx = luaL_checkint(L, 1);
   uint32_t addr;
   uint16_t port;
@@ -100,7 +100,7 @@ fn_cdata_get_remote4(lua_State *L) {
 }
 
 static int 
-fn_cdata_check_remote4(lua_State *L) {
+lua_fn_cdata_check_remote4(lua_State *L) {
   int idx = luaL_checkint(L, 1);
   int addr = luaL_checkint(L, 2);
   int port = luaL_checkint(L, 3);
@@ -109,7 +109,7 @@ fn_cdata_check_remote4(lua_State *L) {
 }
 
 static int 
-fn_sock_send_data(lua_State *L) {
+lua_fn_sock_send_data(lua_State *L) {
   int idx = luaL_checkint(L, 1);
   dbuf_t *d = lua_checkdbuf(L, 2);
   int nwrote = sock_send_data(idx, d);
@@ -117,19 +117,37 @@ fn_sock_send_data(lua_State *L) {
   return 1;
 }
 
-static const luaL_reg su_lib[] = {
-  {"set_debug_level", fn_set_debug_level },
-  {"print_dbuf", fn_print_dbuf },
-  {"dalloc", fn_dalloc },
-  {"dlock", fn_dlock },
-  {"dunlock", fn_dunlock },
-  {"dstr", fn_dstr },
-  {"dgetstr", fn_dgetstr },
-  {"dstrcat", fn_dstrcat },
+static int
+lua_fn_run_cycles(lua_State *L) {
+  int total_counter = luaL_checkint(L, 1);
+  int counter = total_counter;
+  int total_events = 0;
+  while(counter != 0) {
+    total_events += sock_one_cycle(1000, (void *)L);
+    if(counter > 0) {
+      counter--;
+    }
+  }
+  // Crude average load
+  lua_pushinteger(L, (float)total_events / (float)total_counter);
+  return 1;
+}
 
-  {"cdata_get_remote4", fn_cdata_get_remote4 },
-  {"cdata_check_remote4", fn_cdata_check_remote4 },
-  {"sock_send_data", fn_sock_send_data },
+
+static const luaL_reg su_lib[] = {
+  {"set_debug_level", lua_fn_set_debug_level },
+  {"print_dbuf", lua_fn_print_dbuf },
+  {"dalloc", lua_fn_dalloc },
+  {"dlock", lua_fn_dlock },
+  {"dunlock", lua_fn_dunlock },
+  {"dstr", lua_fn_dstr },
+  {"dgetstr", lua_fn_dgetstr },
+  {"dstrcat", lua_fn_dstrcat },
+
+  {"cdata_get_remote4", lua_fn_cdata_get_remote4 },
+  {"cdata_check_remote4", lua_fn_cdata_check_remote4 },
+  {"sock_send_data", lua_fn_sock_send_data },
+  { "run_cycles", lua_fn_run_cycles },
 
   {NULL, NULL}
 };
