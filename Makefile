@@ -1,5 +1,4 @@
-all: lua_lib supplib tst 
-# fmvlib
+all: lua_lib supplib tst fmvlib
 
 supplib:
 	(cd supp_src; make)
