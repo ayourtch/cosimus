@@ -1045,6 +1045,11 @@ function GenCode(packets)
 
   otab.p("  }\n}\n\n")
 
+  LuaStartFunc(otab, "global_id_str")
+  otab.p("  int global_id = get_packet_global_id(d->buf);\n");
+  otab.p("  lua_pushstring(L, global_id_str(global_id));\n") 
+  LuaEndFunc(otab, 1)
+
   -- lua registration data and function
 
   otab.p("\n\nstatic const luaL_reg fmvlib[] = {\n")
