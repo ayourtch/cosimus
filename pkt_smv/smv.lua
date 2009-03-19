@@ -17,7 +17,7 @@ end
 
 -- send an immediate ack for packet d arrived on session sess
 function smv_ack_immed(sess, d)
-  local p = fmv.new_packet()
+  local p = fmv.packet_new()
   fmv.PacketAckHeader(p)
   fmv.PacketAck_PacketsBlockSize(p, 1)
   fmv.PacketAck_PacketsBlock(p, 0, fmv.GetSequenceNumber(d))
@@ -30,11 +30,12 @@ function smv_send_then_unlock(sess, p)
   smv_next_seq(sess, p)
   -- todo - checking against stale sessions
   su.sock_send_data(sess.idx, p)
-  fmv.unlock_packet(p)
+  su.print_dbuf(0, 0, p)
+  fmv.packet_unlock(p)
 end
 
 function smv_send_region_handshake(sess)
-  local p = fmv.new_packet()
+  local p = fmv.packet_new()
   fmv.RegionHandshakeHeader(p)
   fmv.RegionHandshake_RegionInfo(p, 
       72458694, -- flags
@@ -88,6 +89,7 @@ function smv_packet(idx, d)
       sess.user_id = user_id
       sess.remote_addr = remote_addr
       sess.remote_port = remote_port
+      sess.seq = 0
 
       smv_ack_immed(sess, d)
       smv_send_region_handshake(sess)
