@@ -134,7 +134,7 @@ static const luaL_reg su_lib[] = {
   {NULL, NULL}
 };
 
-LUA_API int luaopen_tstlib (lua_State *L) {
+LUA_API int luaopen_libsupp (lua_State *L) {
   luaL_openlib(L, "su", su_lib, 0);
 
   lua_getglobal(L, "su");
