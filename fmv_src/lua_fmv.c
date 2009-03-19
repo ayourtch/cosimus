@@ -49,6 +49,51 @@ lua_fn_SetSequenceNumber(lua_State *L) {
   return 0;
 }
 
+dbuf_t *
+EncodePacket(dbuf_t *d) {
+  dbuf_t *d1;
+  if(IsZeroCoded(d->buf)) {
+    d1 = ZeroEncodePacket(d);
+  } else {
+    d1 = dlock(d);
+  }
+  return d1;
+}
+
+dbuf_t *
+DecodePacket(dbuf_t *d) {
+  dbuf_t *d1;
+  if(IsZeroCoded(d->buf)) {
+    d1 = ZeroDecodePacket(d);
+  } else {
+    d1 = dlock(d);
+  }
+  return d1;
+}
+
+
+static int 
+lua_fn_EncodePacket(lua_State *L) {
+  dbuf_t *d = luaL_checkuserdata(L, 1);
+  dbuf_t *d1 = EncodePacket(d);
+  if(d1 == NULL) {
+    return 0;
+  }
+  lua_pushlightuserdata(L, d1);
+  return 1;
+}
+
+static int 
+lua_fn_DecodePacket(lua_State *L) {
+  dbuf_t *d = luaL_checkuserdata(L, 1);
+  dbuf_t *d1 = DecodePacket(d);
+  if(d1 == NULL) {
+    return 0;
+  }
+  lua_pushlightuserdata(L, d1);
+  return 1;
+}
+
 
 const luaL_reg fmv_sta_lib[] = {
   { "packet_new", lua_fn_packet_new },
@@ -56,6 +101,8 @@ const luaL_reg fmv_sta_lib[] = {
   { "packet_unlock", lua_fn_packet_unlock },
   { "GetSequenceNumber", lua_fn_GetSequenceNumber },
   { "SetSequenceNumber", lua_fn_SetSequenceNumber },
+  { "EncodePacket", lua_fn_EncodePacket },
+  { "DecodePacket", lua_fn_DecodePacket },
   { NULL, NULL }
 };
 

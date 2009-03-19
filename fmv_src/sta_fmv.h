@@ -33,6 +33,7 @@
 #endif
 #include <stdint.h>
 #include "lib_uuid.h"
+#include "lib_dbuf.h"
 
 typedef int8_t s8t;
 typedef uint8_t u8t;
@@ -118,6 +119,9 @@ void S8_UDP(s8t val, u8t* data, int *i);
 void UDP_S8(s8t* val, u8t* data, int *i);
 void BOOL_UDP(int val, u8t* data, int *i);
 void UDP_BOOL(int* val, u8t* data, int *i);
+
+dbuf_t *ZeroEncodePacket(dbuf_t *d);
+dbuf_t *ZeroDecodePacket(dbuf_t *d);
 
 #if defined __cplusplus
     }

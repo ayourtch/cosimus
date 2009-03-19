@@ -741,3 +741,108 @@ void UDP_BOOL(int* val, u8t* data, int *i)
   *val = b;
 }
 
+
+dbuf_t *ZeroEncodePacket(dbuf_t *d)
+{
+    dbuf_t *d1;
+    int srclen=d->dsize;
+    unsigned char *src;
+    unsigned char *dest;
+
+    int i;
+    int bodylen;
+    int zerolen = 0;
+    unsigned char zerocount = 0;
+
+    d1 = dalloc(d->dsize);
+    if (d1 == NULL) {
+      return NULL;
+    }
+    src = d->buf;
+    dest = d1->buf;
+
+
+    memcpy(dest, src, 6);
+    zerolen += 6;
+
+    if (!HasAcks(src)) {
+        bodylen = srclen;
+    } else {
+        bodylen = srclen - src[srclen - 1] * 4 - 1;
+    }
+
+    for (i = zerolen; i < bodylen; i++) {
+        if (src[i] == 0x00) {
+            zerocount++;
+
+            if (zerocount == 0) {
+                dest[zerolen++] = 0x00;
+                dest[zerolen++] = 0xff;
+                zerocount++;
+            }
+        } else {
+            if (zerocount != 0) {
+                dest[zerolen++] = 0x00;
+                dest[zerolen++] = (unsigned char)zerocount;
+                zerocount = 0;
+            }
+            dest[zerolen++] = src[i];
+        }
+    }
+
+    if (zerocount != 0) {
+        dest[zerolen++] = 0x00;
+        dest[zerolen++] = (unsigned char)zerocount;
+    }
+
+    /* Copy appended ACKs */
+    for (; i < srclen; i++) {
+        dest[zerolen++] = src[i];
+    }
+
+    d1->dsize = zerolen;
+    return d1;
+}
+
+dbuf_t *ZeroDecodePacket(dbuf_t *d)
+{
+    int srclen=d->dsize;
+    unsigned char *src;
+    unsigned char *dest;
+
+    int zerolen = 0;
+    int bodylen = 0;
+    int i = 0;
+    unsigned char j;
+    dbuf_t *d1 = dalloc(3000); // FIXME: magic numbers!
+    if(d1 == NULL) {
+      return NULL;
+    }
+    src = d->buf;
+    dest = d1->buf;
+
+    memcpy(dest, src, 6);
+    zerolen = 6;
+    bodylen = srclen;
+
+    for (i = zerolen; i < bodylen; i++) {
+        if (src[i] == 0x00) {
+            for (j = 0; j < src[i + 1]; j++) {
+                dest[zerolen++] = 0x00;
+            }
+
+            i++;
+        } else {
+            dest[zerolen++] = src[i];
+        }
+    }
+
+    /* Copy appended ACKs */
+    for (; i < srclen; i++) {
+        dest[zerolen++] = src[i];
+    }
+
+    d1->dsize = zerolen;
+    return d1;
+}
+
