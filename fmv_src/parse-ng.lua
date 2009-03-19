@@ -917,6 +917,7 @@ function Header(name, packets)
   HeaderIncludes(otab)
 
   otab.p("char *global_id_str(u32t global_id);\n");
+  otab.p("void FinalizePacketLength(dbuf_t *d);\n");
 
   -- output packet-specific typedefs
   for i, packet in ipairs(packets) do
@@ -1063,10 +1064,25 @@ function GenCode(packets)
 
   otab.p("  }\n}\n\n")
 
+  otab.p("void\nFinalizePacketLength(dbuf_t *d) {\n")
+  otab.p("  int global_id = get_packet_global_id(d->buf);\n")
+  otab.p("  int len = 0;\n")
+  otab.p("  switch(global_id) {\n")
+  for i, packet in ipairs(packets) do
+    otab.p("    case " .. packet.enum .. ": len = " .. packet.enum .. "Length(d); break;\n")
+  end
+  otab.p("  }\n")
+  otab.p("  d->dsize = len;\n")
+  otab.p("}\n\n")
+
   LuaStartFunc(otab, "global_id_str")
-  otab.p("  int global_id = get_packet_global_id(d->buf);\n");
+  otab.p("  int global_id = get_packet_global_id(d->buf);\n")
   otab.p("  lua_pushstring(L, global_id_str(global_id));\n") 
   LuaEndFunc(otab, 1)
+
+  LuaStartFunc(otab, "FinalizePacketLength")
+  otab.p("  FinalizePacketLength(d);\n") 
+  LuaEndFunc(otab, 0)
 
   -- lua registration data and function
 
