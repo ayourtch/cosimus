@@ -298,17 +298,22 @@ function ArrayFieldKind(field)
   return out
 end
 
-function CodeArrayFieldStr(field)
+function ArrayFieldLengthName(field)
   local out
   local kind = ArrayFieldKind(field)
   if kind == 0 then
-    out = field.name .. ", " .. field.name .. "_sz_" .. field.len
+    out = field.name .. "_sz_" .. field.len
   elseif kind == 1 then
-    out = field.name .. ", " .. field.name .. "_szV1"
+    out = field.name .. "_szV1"
   else
-    out = field.name .. ", " .. field.name .. "_szV2"
+    out = field.name .. "_szV2"
   end
   return out
+
+end
+
+function CodeArrayFieldStr(field)
+  return field.name .. ', ' .. ArrayFieldLengthName(field)
 end
 
 function HeaderArrayFieldStr(field, byref, spacer)
@@ -318,16 +323,7 @@ function HeaderArrayFieldStr(field, byref, spacer)
   if spacer then
     sp = spacer
   end
-  if kind == 0 then
-    out = "u8t *" .. field.name .. sp .. "unsigned int " .. 
-                     field.name .. "_sz_" .. field.len 
-  elseif kind == 1 then
-    out = "u8t *" .. field.name .. sp .. "unsigned int " ..
-	 field.name .. "_szV1"
-  else -- if field.len == 2 then
-    out = "u8t *" .. field.name .. sp .. "unsigned int " ..
-		 field.name .. "_szV2"
-  end
+  out = "u8t *" .. field.name .. sp .. "unsigned int " .. ArrayFieldLengthName(field)
   return out
 end
 
@@ -357,6 +353,14 @@ end
 
 function LuaPushVectorFieldStr(field, fourth_field)
   return HeaderVectorFieldStr(field, "", "lua_pushnumber(L,", fourth_field, '; ', '); lua_argn++')
+end
+
+function IsArrayField(field)
+  local out = false
+  if (field.type == "Fixed") or (field.type == "Variable") then
+    out = true
+  end
+  return out
 end
 
 function HeaderFieldStr(field, byref)
@@ -442,8 +446,11 @@ function LuaPopFieldStr(field)
   elseif field.type == "LLUUID" then
     out = 'luaL_checkx_uuid(L, lua_argn++, &' .. field.name .. ')'
   else 
-    -- out = 'luaL_checkx_array(L, lua_argn++, ' .. CodeArrayFieldStr(field) .. ', ' .. ArrayFieldKind(field) .. ')'
-    out = '/* fixme LuaPopFieldStr: ' .. field.name .. '*/'
+    -- out = field.name ' = luaL_checkx_array(L, lua_argn++, ' .. ArrayFieldLengthName(field) .. ', ' .. ArrayFieldKind(field) .. ')'
+    -- out = '/* fixme LuaPopFieldStr: ' .. field.name .. '*/'
+
+    -- typecasting here to avoid the warning. We don't mod the field.
+    out = field.name .. ' = (void *)luaL_checklstring(L, lua_argn++, &' .. ArrayFieldLengthName(field) .. ')'
   end
   return out .. ';'
 end
@@ -574,8 +581,27 @@ end
 function LuaCodeFieldFromUdp(otab, field)
   otab.p("  {\n")
   otab.p("    " .. LuaDefineFieldStr(field) .. ";\n")
+  if IsArrayField(field) then 
+    local kind = ArrayFieldKind(field) 
+    local flen = field.len
+    otab.p("    /* alloc temp storage */\n")
+    if kind == 2 then
+      flen = 65535
+    elseif kind == 1 then
+      flen = 255
+    end
+    otab.p('    ' .. ArrayFieldLengthName(field) .. ' = ' .. flen .. ';\n')
+    otab.p('    ' .. field.name .. ' = malloc(' .. ArrayFieldLengthName(field) .. ');')
+    otab.p('    if( NULL == ' .. field.name ..' ) { \n')
+    otab.p('      luaL_error(L, "Could not alloc temp storage");\n')
+    otab.p('    }\n')
+  end
   otab.p("    UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n);\n")
   otab.p("    " .. LuaPushFieldStr(field) .. "\n")
+  if IsArrayField(field) then
+    otab.p("    /* fixme: free temp storage here */\n")
+    otab.p('    free(' .. field.name .. ');\n')
+  end
   otab.p("  }\n")
 end
 
@@ -870,6 +896,7 @@ end
 
 function HeaderIncludes(otab)
   otab.p("#include <stdint.h>\n")
+  otab.p("#include <stdlib.h>\n")
   otab.p("#include <strings.h>\n")
   otab.p('#include "lib_dbuf.h"\n')
   otab.p('#include "lua.h"\n')
@@ -925,7 +952,7 @@ end
 
 function LuaCodeCommon(otab)
   local code = [[
-void
+static void
 luaL_checkx_uuid(lua_State *L, int narg, uuid_t *uuid) {
   size_t sz;
   const char *s = luaL_checklstring(L, narg, &sz);
@@ -935,7 +962,7 @@ luaL_checkx_uuid(lua_State *L, int narg, uuid_t *uuid) {
   memcpy(uuid, s, sz);
 }
 
-u16t
+static u16t
 luaL_checkx_ipport(lua_State *L, int narg) {
   int port = luaL_checkint(L, narg);
   if ((port < 0) || (port > 65535)) {
@@ -949,7 +976,7 @@ luaL_checkx_bool(lua_State *L, int narg) {
   return lua_toboolean(L, narg);
 }
 
-u64t
+static u64t
 luaL_checkx_u64(lua_State *L, int narg) {
   size_t sz;
   const char *s = luaL_checklstring(L, narg, &sz);
@@ -961,7 +988,7 @@ luaL_checkx_u64(lua_State *L, int narg) {
   return u64;
 }
 
-void
+static void
 lua_pushx_u64(lua_State *L, u64t u64) {
   lua_pushlstring(L, (void *)&u64, sizeof(u64t));
 }
