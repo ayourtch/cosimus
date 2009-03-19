@@ -73,6 +73,8 @@ u32t get_packet_global_id(u8t *data);
 void SetPacketID(u8t* data, int frequency, u16t val);
 
 void Header_UDP(u8t* data, u16t packetId, int frequency, u8t flags);
+void UUIDToString(char *val, const uuid_t *uu);
+void UUIDFromString(const char* data_ptr, uuid_t *uu);
 void LLUUID_UDP(uuid_t uu, u8t* data, int *i);
 void UDP_LLUUID(uuid_t *uu, u8t* data, int *i);
 void Variable2_UDP(const char *val, int length, u8t* data, int *i);

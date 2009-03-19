@@ -469,7 +469,7 @@ function LuaPushFieldStr(field)
   elseif field.type == "LLVector3d" then
     out = LuaPushVectorFieldStr(field, nil)
   elseif field.type == "LLUUID" then
-    out = 'lua_pushlstring(L, (const char *) &' .. field.name .. ', sizeof(uuid_t)); lua_argn++'
+    out = 'lua_pushx_uuid(L, &' .. field.name .. '); lua_argn++'
   else 
     out = 'lua_pushlstring(L, ' .. CodeArrayFieldStr(field) .. '); lua_argn++'
     -- out = '/* fixme LuaPushFieldStr: ' .. field.name .. '*/'
@@ -952,14 +952,32 @@ end
 
 function LuaCodeCommon(otab)
   local code = [[
+
+static int uuid_are_strings = 1;
+
 static void
 luaL_checkx_uuid(lua_State *L, int narg, uuid_t *uuid) {
   size_t sz;
   const char *s = luaL_checklstring(L, narg, &sz);
-  if(sz != sizeof(uuid_t)) {
-    luaL_error(L, "Expected UUID (%d bytes string) as arg %d, got %d bytes", sizeof(uuid_t), narg, sz);
+  if (uuid_are_strings) {
+    UUIDFromString(s, uuid);
+  } else {
+    if(sz != sizeof(uuid_t)) {
+      luaL_error(L, "Expected UUID (%d bytes string) as arg %d, got %d bytes", sizeof(uuid_t), narg, sz);
+    }
+    memcpy(uuid, s, sz);
   }
-  memcpy(uuid, s, sz);
+}
+
+static void
+lua_pushx_uuid(lua_State *L, uuid_t *uuid) {
+  if(uuid_are_strings) {
+    char str[40];
+    UUIDToString(str, uuid);
+    lua_pushstring(L, (const char *) str);
+  } else {
+    lua_pushlstring(L, (const char *) uuid, sizeof(uuid_t));
+  }
 }
 
 static u16t
