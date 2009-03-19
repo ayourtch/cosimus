@@ -196,20 +196,35 @@ map_pkt_types = {
   BOOL   = 'int'
 }
 
-map_lua_int = {
-  S8  = true,
-  S16 = true,
-  S32 = true,
-  U8  = true,
-  U16 = true,
-  U32 = true,
-  -- U64 = true,
-  -- F32  = 'f32t',
-  -- F64  = 'f64t',
-  -- IPADDR = 'u32t',
-  -- IPPORT = 'u16t',
-  -- LLUUID = 'uuid_t',
-  BOOL   = true
+-- how to get the integers from lua into C
+map_lua_int_pop = {
+  S8  = 'luaL_checkint',
+  S16 = 'luaL_checkint',
+  S32 = 'luaL_checkint',
+  U8  = 'luaL_checkint',
+  U16 = 'luaL_checkint',
+  U32 = 'luaL_checkint',
+  U64 = 'luaL_checkx_u64',
+  F32  = 'luaL_checknumber',
+  F64  = 'luaL_checknumber',
+  IPADDR = 'luaL_checkint',
+  IPPORT = 'luaL_checkx_ipport',
+  BOOL   = 'luaL_checkx_bool'
+}
+
+map_lua_int_push = {
+  S8  = 'lua_pushnumber',
+  S16 = 'lua_pushnumber',
+  S32 = 'lua_pushnumber',
+  U8  = 'lua_pushnumber',
+  U16 = 'lua_pushnumber',
+  U32 = 'lua_pushnumber',
+  U64 = 'lua_pushx_u64',
+  F32  = 'lua_pushnumber',
+  F64  = 'lua_pushnumber',
+  IPADDR = 'lua_pushnumber',
+  IPPORT = 'lua_pushnumber',
+  BOOL   = 'lua_pushboolean'
 }
 
 map_pkt_type_sz = {
@@ -263,37 +278,55 @@ function wrap_header(name, innercontent)
   return output 
 end
 
+
+-- return the kind of array field
+-- 0 = fixed 
+-- 1 = variable, 1 byte len
+-- 2 = variable, 2 byte len
+
+function ArrayFieldKind(field)
+  local out 
+  if field.type == "Fixed" then
+    out = 0
+  else
+    if field.len == 1 then
+      out = 1
+    else
+      out = 2
+    end
+  end
+  return out
+end
+
 function CodeArrayFieldStr(field)
   local out
-  if field.type == "Fixed" then
+  local kind = ArrayFieldKind(field)
+  if kind == 0 then
     out = field.name .. ", " .. field.name .. "_sz_" .. field.len
-  else -- if field.type == "Variable" then
-    if field.len == 1 then
-      out = field.name .. ", " .. field.name .. "_szV1"
-    else
-      out = field.name .. ", " .. field.name .. "_szV2"
-    end
+  elseif kind == 1 then
+    out = field.name .. ", " .. field.name .. "_szV1"
+  else
+    out = field.name .. ", " .. field.name .. "_szV2"
   end
   return out
 end
 
 function HeaderArrayFieldStr(field, byref, spacer)
   local out = ""
+  local kind = ArrayFieldKind(field)
   local sp = ", "
   if spacer then
     sp = spacer
   end
-  if field.type == "Fixed" then
+  if kind == 0 then
     out = "u8t *" .. field.name .. sp .. "unsigned int " .. 
                      field.name .. "_sz_" .. field.len 
-  else -- if field.type == "Variable" then
-    if field.len == 1 then
-      out = "u8t *" .. field.name .. sp .. "unsigned int " ..
+  elseif kind == 1 then
+    out = "u8t *" .. field.name .. sp .. "unsigned int " ..
 	 field.name .. "_szV1"
-    else -- if field.len == 2 then
-      out = "u8t *" .. field.name .. sp .. "unsigned int " ..
+  else -- if field.len == 2 then
+    out = "u8t *" .. field.name .. sp .. "unsigned int " ..
 		 field.name .. "_szV2"
-    end
   end
   return out
 end
@@ -394,10 +427,10 @@ end
 
 
 function LuaPopFieldStr(field)
-  local m_int = map_lua_int[field.type]
+  local m_int = map_lua_int_pop[field.type]
   local out
   if m_int then
-    out = field.name .. ' = luaL_checkint(L, lua_argn++)'
+    out = field.name .. ' = ' .. m_int .. '(L, lua_argn++)'
   elseif field.type == "LLVector3" then
     out = LuaPopVectorFieldStr(field, nil)
   elseif field.type == "LLQuaternion" then
@@ -406,17 +439,20 @@ function LuaPopFieldStr(field)
     out = LuaPopVectorFieldStr(field, 's')
   elseif field.type == "LLVector3d" then
     out = LuaPopVectorFieldStr(field, nil)
+  elseif field.type == "LLUUID" then
+    out = 'luaL_checkx_uuid(L, lua_argn++, &' .. field.name .. ')'
   else 
+    -- out = 'luaL_checkx_array(L, lua_argn++, ' .. CodeArrayFieldStr(field) .. ', ' .. ArrayFieldKind(field) .. ')'
     out = '/* fixme LuaPopFieldStr: ' .. field.name .. '*/'
   end
   return out .. ';'
 end
 
 function LuaPushFieldStr(field)
-  local m_int = map_lua_int[field.type]
+  local m_int = map_lua_int_push[field.type]
   local out
   if m_int then
-    out = 'lua_pushnumber(L, ' .. field.name .. '); lua_argn++'
+    out = m_int .. '(L, ' .. field.name .. '); lua_argn++'
   elseif field.type == "LLVector3" then
     out = LuaPushVectorFieldStr(field, nil)
   elseif field.type == "LLQuaternion" then
@@ -425,8 +461,11 @@ function LuaPushFieldStr(field)
     out = LuaPushVectorFieldStr(field, 's')
   elseif field.type == "LLVector3d" then
     out = LuaPushVectorFieldStr(field, nil)
+  elseif field.type == "LLUUID" then
+    out = 'lua_pushlstring(L, (const char *) &' .. field.name .. ', sizeof(uuid_t)); lua_argn++'
   else 
-    out = '/* fixme LuaPushFieldStr: ' .. field.name .. '*/'
+    out = 'lua_pushlstring(L, ' .. CodeArrayFieldStr(field) .. '); lua_argn++'
+    -- out = '/* fixme LuaPushFieldStr: ' .. field.name .. '*/'
   end
   return out .. ';'
 end
@@ -884,15 +923,85 @@ end
 
 --------------------------- C code autogeneration functions ------------------
 
+function LuaCodeCommon(otab)
+  local code = [[
+void
+luaL_checkx_uuid(lua_State *L, int narg, uuid_t *uuid) {
+  size_t sz;
+  const char *s = luaL_checklstring(L, narg, &sz);
+  if(sz != sizeof(uuid_t)) {
+    luaL_error(L, "Expected UUID (%d bytes string) as arg %d, got %d bytes", sizeof(uuid_t), narg, sz);
+  }
+  memcpy(uuid, s, sz);
+}
+
+u16t
+luaL_checkx_ipport(lua_State *L, int narg) {
+  int port = luaL_checkint(L, narg);
+  if ((port < 0) || (port > 65535)) {
+    luaL_error(L, "Expected TCP/IP Port (0..65535) as arg %d, got %d", narg, port);
+  }
+  return port;
+}
+
+int
+luaL_checkx_bool(lua_State *L, int narg) {
+  return lua_toboolean(L, narg);
+}
+
+u64t
+luaL_checkx_u64(lua_State *L, int narg) {
+  size_t sz;
+  const char *s = luaL_checklstring(L, narg, &sz);
+  u64t u64;
+  if(sz != sizeof(u64t)) {
+    luaL_error(L, "Expected u64t (%d bytes string) as arg %d, got %d bytes", sizeof(u64t), narg, sz);
+  }
+  memcpy(&u64, s, sz);
+  return u64;
+}
+
+void
+lua_pushx_u64(lua_State *L, u64t u64) {
+  lua_pushlstring(L, (void *)&u64, sizeof(u64t));
+}
+
+/*
+void
+lua_pushx_ipaddr(lua_State *L, u32t ipaddr) {
+  struct in_addr in_addr;
+  in_addr.s_addr = ipaddr;
+  lua_pushstring(L, inet_ntoa(in_addr));
+}
+
+u32t
+luaL_checkx_ipaddr(lua_State *L, int narg) {
+  struct in_addr in_addr;
+  const char *s = luaL_checkstring(L, narg);
+  if(0 == inet_aton(s, &in_addr)) {
+    luaL_error(L, "Expected IP Address as arg %d, got: '%s'", narg, s);
+  }
+  return in_addr.s_addr;
+}
+*/
+
+  ]]
+  otab.p(code)
+end
+
 function GenCode(packets)
   local otab = StringAccumulator()
 
   otab.p('#include "gen_fmv.h"\n')
   otab.p('#include <lauxlib.h>\n')
   otab.p('#include <lualib.h>\n')
+  otab.p('#include <sys/socket.h>\n')
+  otab.p('#include <netinet/in.h>\n')
+  otab.p('#include <arpa/inet.h>\n')
 
 
   otab.p("\n\n")
+  LuaCodeCommon(otab)
 
   for i, packet in ipairs(packets) do
     HeaderCodePacket(otab, packet, false)
