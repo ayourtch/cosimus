@@ -39,14 +39,18 @@ lua_fn_start_listener(lua_State *L) {
 
 static int
 lua_fn_run_cycles(lua_State *L) {
-  int counter = luaL_checkint(L, 1);
+  int total_counter = luaL_checkint(L, 1);
+  int counter = total_counter;
+  int total_events = 0;
   while(counter != 0) {
-    sock_one_cycle(1000, (void *)L);
+    total_events += sock_one_cycle(1000, (void *)L);
     if(counter > 0) {
       counter--;
     }
   }
-  return 0;
+  // Crude average load
+  lua_pushinteger(L, (float)total_events / (float)total_counter);
+  return 1;
 }
 
 static const luaL_reg smvlib[] = {
