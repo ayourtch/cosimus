@@ -156,6 +156,14 @@ cdata_get_remote4(int idx, uint32_t *addr, uint16_t *port) {
   return 1;
 }
 
+int 
+cdata_check_remote4(int idx, uint32_t addr, uint16_t port) {
+  uint32_t a;
+  uint16_t p;
+  cdata_get_remote4(idx, &a, &p);
+  return ((a == addr) && (p == port));
+}
+
 
 /*@}*/
 
