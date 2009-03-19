@@ -52,7 +52,7 @@ http_handler_func_t default_http_dispatcher(appdata_http_t *ad)
 }
 
 /* new connection came in */
-int http_newconn(int idx, int parent)
+int http_newconn(int idx, int parent, void *u_ptr)
 {
   appdata_http_t *ad;
   appdata_http_t *adp;
@@ -645,7 +645,7 @@ http_request_check(int idx)
  */
 
 int
-ev_http_read(int idx, dbuf_t * d)
+ev_http_read(int idx, dbuf_t * d, void *u_ptr)
 {
   appdata_http_t *ad = get_appdata(idx);
 
@@ -741,7 +741,7 @@ ev_http_read(int idx, dbuf_t * d)
  * read data from the HTTP-CONNECT socket
  */
 int
-ev_http_connect_read(int idx, dbuf_t * d)
+ev_http_connect_read(int idx, dbuf_t * d, void *u_ptr)
 {
   debug(DBG_GLOBAL, 5, "HTTP-CONNECT idx %d got %d bytes of data", idx,
         d->dsize);

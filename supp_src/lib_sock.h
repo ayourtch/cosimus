@@ -47,10 +47,10 @@
 
 
 /**** Event handler function pointer types */
-typedef void (*sock_ev_channel_ready_t)(int idx);
-typedef int (*sock_ev_read_t)(int idx, dbuf_t *d);
-typedef int (*sock_ev_closed_t)(int idx);
-typedef int (*sock_ev_newconn_t)(int idx, int parent);
+typedef void (*sock_ev_channel_ready_t)(int idx, void *u_ptr);
+typedef int (*sock_ev_read_t)(int idx, dbuf_t *d, void *u_ptr);
+typedef int (*sock_ev_closed_t)(int idx, void *u_ptr);
+typedef int (*sock_ev_newconn_t)(int idx, int parent, void *u_ptr);
 
 typedef struct sock_handlers_t_tag {
   sock_ev_channel_ready_t ev_channel_ready;
@@ -64,7 +64,7 @@ void print_socks(void);
 int bind_tcp_listener_specific(char *addr, int port);
 int bind_tcp_listener(int port);
 
-void sock_one_cycle(int timeout);
+void sock_one_cycle(int timeout, void *u_ptr);
 
 int init_ssl(char *cert_file_svr, char *key_file_svr, char *cert_file_clt,
          char *key_file_clt);
@@ -74,7 +74,7 @@ void cdata_set_appdata_dbuf(int idx, dbuf_t *d);
 
 sock_handlers_t *cdata_get_handlers(int idx);
 
-void close_idx(int idx);
+void close_idx(int idx, void *u_ptr);
 
 int bind_udp_listener_specific(char *addr, int port, char *remote);
 

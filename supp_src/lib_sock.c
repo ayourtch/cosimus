@@ -336,10 +336,10 @@ do_l7_reset(int idx)
  * Gets called when the channel with the idx is ready - once.
  */
 void
-ev_channel_ready(int idx)
+ev_channel_ready(int idx, void *u_ptr)
 {
   if (cdata[idx].handlers.ev_channel_ready) {
-    cdata[idx].handlers.ev_channel_ready(idx);
+    cdata[idx].handlers.ev_channel_ready(idx, u_ptr);
   }
 }
 
@@ -348,7 +348,7 @@ ev_channel_ready(int idx)
  * the data in the dbuf has been read from the socket with index idx 
  */
 int
-ev_read(int idx, dbuf_t * d)
+ev_read(int idx, dbuf_t * d, void *u_ptr)
 {
   int out = 0;
 
@@ -357,7 +357,7 @@ ev_read(int idx, dbuf_t * d)
   debug_dump(DBG_GLOBAL, 100, d->buf, d->dsize);
 
   if (cdata[idx].handlers.ev_read) {
-    out = cdata[idx].handlers.ev_read(idx, d);
+    out = cdata[idx].handlers.ev_read(idx, d, u_ptr);
   }
   return out;
 }
@@ -366,7 +366,7 @@ ev_read(int idx, dbuf_t * d)
  * the socket in index idx got closed 
  */
 int
-ev_closed(int idx)
+ev_closed(int idx, void *u_ptr)
 {
   dbuf_t *d;
 
@@ -379,7 +379,7 @@ ev_closed(int idx)
     dunlock(d);
   }
   if(cdata[idx].handlers.ev_closed) {
-    cdata[idx].handlers.ev_closed(idx);
+    cdata[idx].handlers.ev_closed(idx, u_ptr);
   }
   dunlock(cdata[idx].appdata);
 
@@ -429,9 +429,9 @@ init_idx(int idx)
 }
 
 void
-close_idx(int idx)
+close_idx(int idx, void *u_ptr)
 {
-  ev_closed(idx);
+  ev_closed(idx, u_ptr);
   close(ufds[idx].fd);
   ufds[idx].fd = -1;
 }
@@ -508,7 +508,7 @@ initiate_connect(char *addr, int port)
  * new connection accepted, the index of it is idx 
  */
 int
-ev_newconn(int idx, int parent)
+ev_newconn(int idx, int parent, void *u_ptr)
 {
   bzero(&cdata[idx], sizeof(cdata[idx]));
 
@@ -524,11 +524,11 @@ ev_newconn(int idx, int parent)
         cdata[idx].connected, cdata[idx].inbound);
 
   if(cdata[parent].handlers.ev_newconn) {
-     cdata[parent].handlers.ev_newconn(idx, parent); 
+     cdata[parent].handlers.ev_newconn(idx, parent, u_ptr); 
   }
   if(cdata[idx].do_ssl == 0) {
     if(cdata[idx].handlers.ev_channel_ready) {
-      cdata[idx].handlers.ev_channel_ready(idx);
+      cdata[idx].handlers.ev_channel_ready(idx, u_ptr);
     }
   }
   return 0;
@@ -688,7 +688,7 @@ bind_tcp_listener(int port)
  */
 
 void
-sock_tcp_listener_pollin(int i)
+sock_tcp_listener_pollin(int i, void *u_ptr)
 {
   struct sockaddr_in sin1;
   unsigned int sin1sz = sizeof(sin1);
@@ -709,7 +709,7 @@ sock_tcp_listener_pollin(int i)
     fcntl(s1, F_SETFL, O_NONBLOCK);
     init_idx(newidx);
     ufds[newidx].fd = s1;
-    if(ev_newconn(newidx, i) < 0) {
+    if(ev_newconn(newidx, i, u_ptr) < 0) {
       debug(DBG_GLOBAL, 1,
             "Application-specific error, closing the connection");
       close(s1);
@@ -733,7 +733,7 @@ sock_tcp_listener_pollin(int i)
  * @see sock_tcp_listener_pollin
  */
 void
-sock_unconnected_pollinout(int i)
+sock_unconnected_pollinout(int i, void *u_ptr)
 {
   int err;
   socklen_t l = sizeof(err);
@@ -750,12 +750,12 @@ sock_unconnected_pollinout(int i)
   } else {
     debug(DBG_GLOBAL, 1, "Index %d successfully connected", i);
     cdata[i].connected = 1;
-    ev_newconn(i, -1);
+    ev_newconn(i, -1, u_ptr);
   }
 }
 
 void
-sock_ssl_check_error(int i, int ret)
+sock_ssl_check_error(int i, int ret, void *u_ptr)
 {
   int err;
   int err2;
@@ -765,7 +765,7 @@ sock_ssl_check_error(int i, int ret)
     ufds[i].events = POLLIN;
     break;
   case SSL_ERROR_ZERO_RETURN:
-    close_idx(i);
+    close_idx(i, u_ptr);
     break;
   case SSL_ERROR_WANT_READ:
     ufds[i].events |= POLLIN;
@@ -776,12 +776,12 @@ sock_ssl_check_error(int i, int ret)
   case SSL_ERROR_SYSCALL:
     err2 = ERR_get_error();
     debug(DBG_SSL, 0, "SSL error: syscall error %d on index %d", err2, i);
-    close_idx(i);
+    close_idx(i, u_ptr);
     break;
   default:
     debug(DBG_SSL, 0, "SSL error: %d, closing index %d", err, i);
     ERR_print_errors_fp(stderr);
-    close_idx(i);
+    close_idx(i, u_ptr);
   }
 }
 
@@ -791,7 +791,7 @@ sock_ssl_check_error(int i, int ret)
  * @param i index of the socket
  */
 void
-sock_ssl_pollinout(int i)
+sock_ssl_pollinout(int i, void *u_ptr)
 {
   int ret;
 
@@ -799,9 +799,9 @@ sock_ssl_pollinout(int i)
     cdata[i].do_ssl = 0;
     debug(DBG_GLOBAL, 11, "SSL done!! (idx %d)", i);
     ufds[i].events = POLLIN;
-    ev_channel_ready(i);
+    ev_channel_ready(i, u_ptr);
   } else {
-    sock_ssl_check_error(i, ret);
+    sock_ssl_check_error(i, ret, u_ptr);
   }
 
 }
@@ -837,10 +837,10 @@ sock_receive_data(int i, dbuf_t * d)
  */
 
 void
-sock_connected_pollin(int i)
+sock_connected_pollin(int i, void *u_ptr)
 {
   if(cdata[i].do_ssl) {
-    sock_ssl_pollinout(i);
+    sock_ssl_pollinout(i, u_ptr);
   } else {
     dbuf_t *d = NULL;
 
@@ -852,9 +852,9 @@ sock_connected_pollin(int i)
       sock_receive_data(i, d);
       debug(DBG_GLOBAL, 11,
             "..read %d bytes - max %d (idx %d)", d->dsize, d->size, i);
-      if(d->dsize == 0 || (d->dsize > 0 && ev_read(i, d) == 0)) {
+      if(d->dsize == 0 || (d->dsize > 0 && ev_read(i, d, u_ptr) == 0)) {
         debug(DBG_GLOBAL, 1, "Index %d closed by remote host", i);
-        close_idx(i);
+        close_idx(i, u_ptr);
       }
       // those who needed this have copied it already 
       debug(DBG_GLOBAL, 11, "sock_connected_pollin: freeing buffer %x", d);
@@ -903,10 +903,10 @@ sock_send_data(int i, dbuf_t * d)
  * @see sock_connected_pollin
  */
 void
-sock_connected_pollout(int i)
+sock_connected_pollout(int i, void *u_ptr)
 {
   if(cdata[i].do_ssl) {
-    sock_ssl_pollinout(i);
+    sock_ssl_pollinout(i, u_ptr);
   } else {
     if(cdata[i].xmit_list != NULL) {
       dbuf_t *d = rpeek(&cdata[i].xmit_list);
@@ -935,11 +935,11 @@ sock_connected_pollout(int i)
       } else {
         // empty data buffer means time to close.
         debug(DBG_GLOBAL, 10, "Seen empty xmit buf - closing index %d", i);
-        close_idx(i);
+        close_idx(i, u_ptr);
       }
       if(cdata[i].xmit_list == NULL && 0) {
         debug(DBG_GLOBAL, 10, "Nothing left to send - closing index %d", i);
-        close_idx(i);
+        close_idx(i, u_ptr);
       }
     }
     /*
@@ -993,7 +993,7 @@ sock_remove_closed_fds(void)
 #endif
 }
 
-void sock_one_cycle(int timeout) {
+void sock_one_cycle(int timeout, void *u_ptr) {
     int i;
 
     debug(DBG_GLOBAL, 125, "poll(%d)", nfds);
@@ -1002,26 +1002,26 @@ void sock_one_cycle(int timeout) {
       if(cdata[i].listener && cdata[i].is_udp == 0) {
         // TCP listener sockets 
         if(ufds[i].revents & POLLIN) {
-          sock_tcp_listener_pollin(i);
+          sock_tcp_listener_pollin(i, u_ptr);
         }
       } else {
         // non-listener sockets - this includes UDP
         if(ufds[i].revents & POLLIN) {
           debug(DBG_GLOBAL, 10, "%d: POLLIN", i);
           if(cdata[i].connected == 0) {
-            sock_unconnected_pollinout(i);
+            sock_unconnected_pollinout(i, u_ptr);
           } else {
-            sock_connected_pollin(i);
+            sock_connected_pollin(i, u_ptr);
           }
         }
         if(ufds[i].revents & POLLOUT) {
           debug(DBG_GLOBAL, 10, "%d: POLLOUT", i);
           if(cdata[i].connected == 0) {
             debug(DBG_GLOBAL, 11, "..on a nonconnected socket...");
-            sock_unconnected_pollinout(i);
+            sock_unconnected_pollinout(i, u_ptr);
           } else {
             debug(DBG_GLOBAL, 11, "on connected...");
-            sock_connected_pollout(i);
+            sock_connected_pollout(i, u_ptr);
           }
         }
         if(ufds[i].revents & POLLERR) {
