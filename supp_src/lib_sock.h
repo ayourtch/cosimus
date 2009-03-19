@@ -64,7 +64,7 @@ void print_socks(void);
 int bind_tcp_listener_specific(char *addr, int port);
 int bind_tcp_listener(int port);
 
-void sock_one_cycle(int timeout, void *u_ptr);
+int sock_one_cycle(int timeout, void *u_ptr);
 
 int init_ssl(char *cert_file_svr, char *key_file_svr, char *cert_file_clt,
          char *key_file_clt);

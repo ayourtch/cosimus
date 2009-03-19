@@ -993,8 +993,9 @@ sock_remove_closed_fds(void)
 #endif
 }
 
-void sock_one_cycle(int timeout, void *u_ptr) {
+int sock_one_cycle(int timeout, void *u_ptr) {
     int i;
+    int nevents = 0;
 
     debug(DBG_GLOBAL, 125, "poll(%d)", nfds);
     poll(ufds, nfds, timeout);
@@ -1003,6 +1004,7 @@ void sock_one_cycle(int timeout, void *u_ptr) {
         // TCP listener sockets 
         if(ufds[i].revents & POLLIN) {
           sock_tcp_listener_pollin(i, u_ptr);
+	  nevents++;
         }
       } else {
         // non-listener sockets - this includes UDP
@@ -1013,6 +1015,7 @@ void sock_one_cycle(int timeout, void *u_ptr) {
           } else {
             sock_connected_pollin(i, u_ptr);
           }
+	  nevents++;
         }
         if(ufds[i].revents & POLLOUT) {
           debug(DBG_GLOBAL, 10, "%d: POLLOUT", i);
@@ -1023,6 +1026,7 @@ void sock_one_cycle(int timeout, void *u_ptr) {
             debug(DBG_GLOBAL, 11, "on connected...");
             sock_connected_pollout(i, u_ptr);
           }
+	  nevents++;
         }
         if(ufds[i].revents & POLLERR) {
           debug(DBG_GLOBAL, 11, "%d: POLLERR", i);
@@ -1037,6 +1041,7 @@ void sock_one_cycle(int timeout, void *u_ptr) {
       }
     }
     sock_remove_closed_fds();
+    return nevents;
 }
 
 
