@@ -298,20 +298,32 @@ function HeaderArrayFieldStr(field, byref, spacer)
   return out
 end
 
-function HeaderVectorFieldStr(field, ref, ctype, fourth_field, spacer)
-  local ox = ctype .. " " .. ref .. "x" .. field.name 
-  local oy = ctype .. " " .. ref .. "y" .. field.name 
-  local oz = ctype .. " " .. ref .. "z" .. field.name 
+function HeaderVectorFieldStr(field, ref, ctype, fourth_field, spacer, epilogue)
+  local ep = ""
+  if epilogue then
+    ep = epilogue
+  end
+  local ox = ctype .. " " .. ref .. "x" .. field.name .. ep
+  local oy = ctype .. " " .. ref .. "y" .. field.name .. ep
+  local oz = ctype .. " " .. ref .. "z" .. field.name .. ep
   local o4 = ""
   local sp = ", "
   if spacer then
     sp = spacer
   end
   if fourth_field then
-    o4 = sp .. ctype .. " " .. ref .. fourth_field .. field.name 
+    o4 = sp .. ctype .. " " .. ref .. fourth_field .. field.name .. ep
   end
   local out = ox .. sp .. oy .. sp .. oz .. o4
   return out
+end
+
+function LuaPopVectorFieldStr(field, fourth_field)
+  return HeaderVectorFieldStr(field, "", "", fourth_field, '; ', ' = luaL_checknumber(L, lua_argn++)')
+end
+
+function LuaPushVectorFieldStr(field, fourth_field)
+  return HeaderVectorFieldStr(field, "", "lua_pushnumber(L,", fourth_field, '; ', '); lua_argn++')
 end
 
 function HeaderFieldStr(field, byref)
@@ -380,26 +392,43 @@ function LuaDefineFieldStr(field)
   return out
 end
 
+
 function LuaPopFieldStr(field)
   local m_int = map_lua_int[field.type]
   local out
   if m_int then
-    out = field.name .. ' = luaL_checkint(L, lua_argn++);'
+    out = field.name .. ' = luaL_checkint(L, lua_argn++)'
+  elseif field.type == "LLVector3" then
+    out = LuaPopVectorFieldStr(field, nil)
+  elseif field.type == "LLQuaternion" then
+    out = LuaPopVectorFieldStr(field, 'w')
+  elseif field.type == "LLVector4" then
+    out = LuaPopVectorFieldStr(field, 's')
+  elseif field.type == "LLVector3d" then
+    out = LuaPopVectorFieldStr(field, nil)
   else 
     out = '/* fixme LuaPopFieldStr: ' .. field.name .. '*/'
   end
-  return out
+  return out .. ';'
 end
 
 function LuaPushFieldStr(field)
   local m_int = map_lua_int[field.type]
   local out
   if m_int then
-    out = 'lua_pushnumber(L, ' .. field.name .. '); lua_argn++;'
+    out = 'lua_pushnumber(L, ' .. field.name .. '); lua_argn++'
+  elseif field.type == "LLVector3" then
+    out = LuaPushVectorFieldStr(field, nil)
+  elseif field.type == "LLQuaternion" then
+    out = LuaPushVectorFieldStr(field, 'w')
+  elseif field.type == "LLVector4" then
+    out = LuaPushVectorFieldStr(field, 's')
+  elseif field.type == "LLVector3d" then
+    out = LuaPushVectorFieldStr(field, nil)
   else 
     out = '/* fixme LuaPushFieldStr: ' .. field.name .. '*/'
   end
-  return out
+  return out .. ';'
 end
 
 -- pass the size/max size of the buffer too
