@@ -6,9 +6,12 @@
 #include "lua.h"
 
 
-static int smv_packet(int idx, dbuf_t *d, void *ptr) {
+static int smv_packet(int idx, dbuf_t *d0, void *ptr) {
   int err;
+  dbuf_t *d;
   lua_State *L = ptr;
+
+  d = MaybeZeroDecodePacket(d0);
   lua_getglobal(L, "smv_packet");
   lua_pushnumber(L, idx);
   lua_pushlightuserdata(L, d);
@@ -20,6 +23,7 @@ static int smv_packet(int idx, dbuf_t *d, void *ptr) {
   } else {
     lua_pop(L, 1);
   }
+  dunlock(d);
   return 1;
 }
 
