@@ -338,19 +338,23 @@ function HeaderFieldStr(field, byref)
   return "\n                " .. out;
 end
 
-function CodeFieldStr(field)
+function CodeFieldStr(field, byref)
   local mtype = map_pkt_types[field.type]
   local out 
+  local ref = ''
+  if byref then
+    ref = '&'
+  end
   if mtype then
-    out = field.name
+    out = ref .. field.name
   elseif field.type == "LLVector3" then
-    out = HeaderVectorFieldStr(field, "", "", nil)
+    out = HeaderVectorFieldStr(field, "", ref, nil)
   elseif field.type == "LLQuaternion" then
-    out = HeaderVectorFieldStr(field, "", "", "w")
+    out = HeaderVectorFieldStr(field, "", ref, "w")
   elseif field.type == "LLVector4" then
-    out = HeaderVectorFieldStr(field, "", "", "s")
+    out = HeaderVectorFieldStr(field, "", ref, "s")
   elseif field.type == "LLVector3d" then
-    out = HeaderVectorFieldStr(field, "", "", nil)
+    out = HeaderVectorFieldStr(field, "", ref, nil)
   else -- fixed and variable array are represented by ptr+len
     out = CodeArrayFieldStr(field, byref)
   end
@@ -383,6 +387,17 @@ function LuaPopFieldStr(field)
     out = field.name .. ' = luaL_checkint(L, lua_argn++);'
   else 
     out = '/* fixme LuaPopFieldStr: ' .. field.name .. '*/'
+  end
+  return out
+end
+
+function LuaPushFieldStr(field)
+  local m_int = map_lua_int[field.type]
+  local out
+  if m_int then
+    out = 'lua_pushnumber(L, ' .. field.name .. '); lua_argn++;'
+  else 
+    out = '/* fixme LuaPushFieldStr: ' .. field.name .. '*/'
   end
   return out
 end
@@ -486,6 +501,14 @@ end
 function CodeFieldFromUdp(otab, field)
   local ftype = field.type
   otab.p("  UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field) .. ", d->buf, &n);\n")
+end
+
+function LuaCodeFieldFromUdp(otab, field)
+  otab.p("  {\n")
+  otab.p("    " .. LuaDefineFieldStr(field) .. ";\n")
+  otab.p("    UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n);\n")
+  otab.p("    " .. LuaPushFieldStr(field) .. "\n")
+  otab.p("  }\n")
 end
 
 function BlockFieldsForeach(otab, block, func)
@@ -593,6 +616,14 @@ function CodeGetFixedBlock(otab, block, prototype_only)
   end
 end
 
+function LuaCodeGetFixedBlock(otab, block)
+  LuaStartFunc(otab, 'Get_' .. block.fullname)
+  LuaCodeN(otab, block);
+  otab.p('  lua_argn = 0;\n')
+  BlockFieldsForeach(otab, block, LuaCodeFieldFromUdp)
+  LuaEndFunc(otab, 'lua_argn')
+end
+
 function CodeSetVariableBlockSize(otab, block, prototype_only)
   if NeedCode(otab, prototype_only) then
     CodeN_only(otab, block);
@@ -644,6 +675,14 @@ function CodeGetVariableBlock(otab, block, prototype_only)
     BlockFieldsForeach(otab, block, CodeFieldFromUdp)
     EndCode(otab)
   end
+end
+
+function LuaCodeGetVariableBlock(otab, block)
+  LuaStartFunc(otab, 'Get_' .. block.fullname)
+  LuaCodeN(otab, block);
+  otab.p('  lua_argn = 0;\n')
+  BlockFieldsForeach(otab, block, LuaCodeFieldFromUdp)
+  LuaEndFunc(otab, 'lua_argn')
 end
 
 function CodeGetBlockLength(otab, block, prototype_only)
@@ -718,6 +757,9 @@ function HeaderCodePacket(otab, packet, prototype_only)
       -- get from a fixed block
       HeaderBlockPrototype(otab, block, "void\nGet_", "", true)
       CodeGetFixedBlock(otab, block, prototype_only)
+      if not prototype_only then
+        LuaCodeGetFixedBlock(otab, block)
+      end
     else -- variable block size
       otab.p("void\n" .. block.fullname .. "BlockSize(" .. 
                         common_args .. ", unsigned int length)")
@@ -740,6 +782,9 @@ function HeaderCodePacket(otab, packet, prototype_only)
 
       HeaderBlockPrototype(otab, block, "void\nGet_", "Block", true)
       CodeGetVariableBlock(otab, block, prototype_only)
+      if not prototype_only then
+        LuaCodeGetVariableBlock(otab, block)
+      end
     end
     otab.p("int\n" .. block.fullname .. "_Length(" .. common_args .. ")")
     CodeGetBlockLength(otab, block, prototype_only)
