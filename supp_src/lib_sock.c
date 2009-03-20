@@ -44,8 +44,8 @@
 /*@{*/
 
 #ifdef XXXXXX
-struct pollfd ufds[MAX_FDS];
-conndata_t cdata[MAX_FDS];
+struct pollfd libsock_data->ufds[MAX_FDS];
+conndata_t libsock_data->cdata[MAX_FDS];
 int nfds = 0;
 
 int nclients = 0;               /* number of active inbound connections */
@@ -64,20 +64,20 @@ void
 print_cdata(int i, int debuglevel)
 {
   debug(DBG_GLOBAL, debuglevel, "CDATA for %d:", i);
-  debug(DBG_GLOBAL, debuglevel, "  xmit_list: %x", cdata[i].xmit_list);
-  debug(DBG_GLOBAL, debuglevel, "  written: %d", cdata[i].written);
-  debug(DBG_GLOBAL, debuglevel, "  listener: %d", cdata[i].listener);
-  debug(DBG_GLOBAL, debuglevel, "  listener_port: %d", cdata[i].listen_port);
-  debug(DBG_GLOBAL, debuglevel, "  is_udp: %d", cdata[i].is_udp);
-  debug(DBG_GLOBAL, debuglevel, "  do_ssl: %d", cdata[i].do_ssl);
-  debug(DBG_GLOBAL, debuglevel, "  is_ssl: %d", cdata[i].is_ssl);
-  debug(DBG_GLOBAL, debuglevel, "  ssl: %x", cdata[i].ssl);
+  debug(DBG_GLOBAL, debuglevel, "  xmit_list: %x", libsock_data->cdata[i].xmit_list);
+  debug(DBG_GLOBAL, debuglevel, "  written: %d", libsock_data->cdata[i].written);
+  debug(DBG_GLOBAL, debuglevel, "  listener: %d", libsock_data->cdata[i].listener);
+  debug(DBG_GLOBAL, debuglevel, "  listener_port: %d", libsock_data->cdata[i].listen_port);
+  debug(DBG_GLOBAL, debuglevel, "  is_udp: %d", libsock_data->cdata[i].is_udp);
+  debug(DBG_GLOBAL, debuglevel, "  do_ssl: %d", libsock_data->cdata[i].do_ssl);
+  debug(DBG_GLOBAL, debuglevel, "  is_ssl: %d", libsock_data->cdata[i].is_ssl);
+  debug(DBG_GLOBAL, debuglevel, "  ssl: %x", libsock_data->cdata[i].ssl);
   debug(DBG_GLOBAL, debuglevel, "  remote: %s:%d",
-        inet_ntoa(cdata[i].remote.sin_addr), cdata[i].remote.sin_port);
-  debug(DBG_GLOBAL, debuglevel, "  apptype: %d", cdata[i].apptype);
-  debug(DBG_GLOBAL, debuglevel, "  appdata: %x", cdata[i].appdata);
-  debug(DBG_GLOBAL, debuglevel, "  l7state: %d", cdata[i].l7state);
-  debug(DBG_GLOBAL, debuglevel, "  recv_list: %x", cdata[i].recv_list);
+        inet_ntoa(libsock_data->cdata[i].remote.sin_addr), libsock_data->cdata[i].remote.sin_port);
+  debug(DBG_GLOBAL, debuglevel, "  apptype: %d", libsock_data->cdata[i].apptype);
+  debug(DBG_GLOBAL, debuglevel, "  appdata: %x", libsock_data->cdata[i].appdata);
+  debug(DBG_GLOBAL, debuglevel, "  l7state: %d", libsock_data->cdata[i].l7state);
+  debug(DBG_GLOBAL, debuglevel, "  recv_list: %x", libsock_data->cdata[i].recv_list);
 }
 
 /* Dump all we know about sockets */
@@ -95,10 +95,10 @@ pkt_dprint_cdata(int i, dbuf_t * d)
 {
   dprintf(d,
           "  %d:%s  do_ssl:%d,ssl:%d,listen:%d,lport:%-5d remote:%16s:%-5d fd:%-5d revents:%x\n",
-          i, cdata[i].is_udp ? "udp" : "tcp", cdata[i].do_ssl,
-          cdata[i].is_ssl, cdata[i].listener, cdata[i].listen_port,
-          inet_ntoa(cdata[i].remote.sin_addr), cdata[i].remote.sin_port,
-          ufds[i].fd, ufds[i].revents);
+          i, libsock_data->cdata[i].is_udp ? "udp" : "tcp", libsock_data->cdata[i].do_ssl,
+          libsock_data->cdata[i].is_ssl, libsock_data->cdata[i].listener, libsock_data->cdata[i].listen_port,
+          inet_ntoa(libsock_data->cdata[i].remote.sin_addr), libsock_data->cdata[i].remote.sin_port,
+          libsock_data->ufds[i].fd, libsock_data->ufds[i].revents);
 }
 
 void
@@ -116,8 +116,8 @@ void
 dsend(int idx, dbuf_t * d)
 {
   debug(DBG_GLOBAL, 5, "pushing %d bytes for index %d", d->dsize, idx);
-  lpush(&cdata[idx].xmit_list, d);
-  ufds[idx].events |= POLLOUT;
+  lpush(&libsock_data->cdata[idx].xmit_list, d);
+  libsock_data->ufds[idx].events |= POLLOUT;
   // Will be unlocked by the send mechanism
   dlock(d);
 }
@@ -125,11 +125,11 @@ dsend(int idx, dbuf_t * d)
 dbuf_t *
 cdata_get_appdata_dbuf(int idx, const char *appdata_sig)
 {
-  if(cdata[idx].appdata == NULL) {
+  if(libsock_data->cdata[idx].appdata == NULL) {
     return NULL;
   } else {
-    if(dcheckusig(cdata[idx].appdata, appdata_sig)) {
-      return cdata[idx].appdata;
+    if(dcheckusig(libsock_data->cdata[idx].appdata, appdata_sig)) {
+      return libsock_data->cdata[idx].appdata;
     } else {
       return NULL;
     }
@@ -139,22 +139,22 @@ cdata_get_appdata_dbuf(int idx, const char *appdata_sig)
 void
 cdata_set_appdata_dbuf(int idx, dbuf_t *d)
 {
-  cdata[idx].appdata = d; 
+  libsock_data->cdata[idx].appdata = d; 
 }
 
 sock_handlers_t *
 cdata_get_handlers(int idx)
 {
-  return &cdata[idx].handlers;
+  return &libsock_data->cdata[idx].handlers;
 }
 
 int 
 cdata_get_remote4(int idx, uint32_t *addr, uint16_t *port) {
   if (addr) {
-    *addr = *((uint32_t *) (&cdata[idx].remote.sin_addr)); 
+    *addr = *((uint32_t *) (&libsock_data->cdata[idx].remote.sin_addr)); 
   }
   if (port) {
-    *port = (uint16_t) cdata[idx].remote.sin_port;
+    *port = (uint16_t) libsock_data->cdata[idx].remote.sin_port;
   }
   return 1;
 }
@@ -264,40 +264,40 @@ ssl_negotiate(int idx, int is_server)
   X509 *client_cert;
   char *str;
 
-  if(cdata[idx].is_ssl) {
+  if(libsock_data->cdata[idx].is_ssl) {
     debug(DBG_SSL, 0,
           "ERROR: trying to start SSL for index %d, when already started - assuming success",
           idx);
     print_cdata(idx, 0);
     return 1;
   }
-  if(cdata[idx].is_udp) {
+  if(libsock_data->cdata[idx].is_udp) {
     debug(DBG_SSL, 0, "ERROR: trying to start SSL for index UDP %d", idx);
     print_cdata(idx, 0);
     return 0;
   }
 
-  if(cdata[idx].ssl == NULL) {
-    cdata[idx].ssl = SSL_new(ssl_server_ctx);
-    if(cdata[idx].ssl == NULL) {
+  if(libsock_data->cdata[idx].ssl == NULL) {
+    libsock_data->cdata[idx].ssl = SSL_new(ssl_server_ctx);
+    if(libsock_data->cdata[idx].ssl == NULL) {
       debug(DBG_SSL, 0, "Could not create SSL for index %d", idx);
       return -100;
     }
-    err = SSL_set_fd(cdata[idx].ssl, ufds[idx].fd);
+    err = SSL_set_fd(libsock_data->cdata[idx].ssl, libsock_data->ufds[idx].fd);
     if(err == 0) {
       debug(DBG_SSL, 0, "Could not assign socket to SSL for index %d", idx);
-      SSL_free(cdata[idx].ssl);
-      cdata[idx].ssl = NULL;
+      SSL_free(libsock_data->cdata[idx].ssl);
+      libsock_data->cdata[idx].ssl = NULL;
       return -101;
     }
-    SSL_set_verify(cdata[idx].ssl,
+    SSL_set_verify(libsock_data->cdata[idx].ssl,
                    SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, test_verify);
   }
   if(is_server) {
-    err = SSL_accept(cdata[idx].ssl);
+    err = SSL_accept(libsock_data->cdata[idx].ssl);
     debug(DBG_SSL, 2, "Error from SSL_accept: %d", err);
   } else {
-    err = SSL_connect(cdata[idx].ssl);
+    err = SSL_connect(libsock_data->cdata[idx].ssl);
     debug(DBG_SSL, 2, "Error from SSL_connect: %d", err);
   }
   if(err <= 0) {
@@ -305,9 +305,9 @@ ssl_negotiate(int idx, int is_server)
     return err;
   }
   debug(DBG_SSL, 2, "Index %d: SSL connection with cipher %s",
-        idx, SSL_get_cipher(cdata[idx].ssl));
+        idx, SSL_get_cipher(libsock_data->cdata[idx].ssl));
   // Get the client cert and compare it if needed. (NB: dynamic allocation) 
-  client_cert = SSL_get_peer_certificate(cdata[idx].ssl);
+  client_cert = SSL_get_peer_certificate(libsock_data->cdata[idx].ssl);
   if(client_cert != NULL) {
     debug(DBG_SSL, 10, "Peer certificate:");
     str = X509_NAME_oneline(X509_get_subject_name(client_cert), 0, 0);
@@ -326,7 +326,7 @@ ssl_negotiate(int idx, int is_server)
     debug(DBG_SSL, 1, "Peer does not have a certificate");
   }
   // all SSL things done, now consider socket as SSL 
-  cdata[idx].is_ssl = 1;
+  libsock_data->cdata[idx].is_ssl = 1;
   return 1;
 }
 
@@ -345,11 +345,11 @@ do_l7_reset(int idx)
 {
   dbuf_t *d;
 
-  while((d = rpop(&cdata[idx].recv_list))) {
+  while((d = rpop(&libsock_data->cdata[idx].recv_list))) {
     dunlock(d);
   }
   debug(DBG_GLOBAL, 1, "L7 reset");
-  cdata[idx].l7state = L7_INIT;
+  libsock_data->cdata[idx].l7state = L7_INIT;
   return 1;
 }
 */
@@ -360,8 +360,8 @@ do_l7_reset(int idx)
 void
 ev_channel_ready(int idx, void *u_ptr)
 {
-  if (cdata[idx].handlers.ev_channel_ready) {
-    cdata[idx].handlers.ev_channel_ready(idx, u_ptr);
+  if (libsock_data->cdata[idx].handlers.ev_channel_ready) {
+    libsock_data->cdata[idx].handlers.ev_channel_ready(idx, u_ptr);
   }
 }
 
@@ -375,11 +375,11 @@ ev_read(int idx, dbuf_t * d, void *u_ptr)
   int out = 0;
 
   debug(DBG_GLOBAL, 1, "ev_read for index %d idx, apptype: %d\n",
-        idx, cdata[idx].apptype);
+        idx, libsock_data->cdata[idx].apptype);
   debug_dump(DBG_GLOBAL, 100, d->buf, d->dsize);
 
-  if (cdata[idx].handlers.ev_read) {
-    out = cdata[idx].handlers.ev_read(idx, d, u_ptr);
+  if (libsock_data->cdata[idx].handlers.ev_read) {
+    out = libsock_data->cdata[idx].handlers.ev_read(idx, d, u_ptr);
   }
   return out;
 }
@@ -392,26 +392,26 @@ ev_closed(int idx, void *u_ptr)
 {
   dbuf_t *d;
 
-  if(cdata[idx].is_ssl) {
-    SSL_shutdown(cdata[idx].ssl);
-    SSL_free(cdata[idx].ssl);
-    cdata[idx].ssl = NULL;
+  if(libsock_data->cdata[idx].is_ssl) {
+    SSL_shutdown(libsock_data->cdata[idx].ssl);
+    SSL_free(libsock_data->cdata[idx].ssl);
+    libsock_data->cdata[idx].ssl = NULL;
   }
-  while((d = rpop(&cdata[idx].xmit_list))) {
+  while((d = rpop(&libsock_data->cdata[idx].xmit_list))) {
     dunlock(d);
   }
-  if(cdata[idx].handlers.ev_closed) {
-    cdata[idx].handlers.ev_closed(idx, u_ptr);
+  if(libsock_data->cdata[idx].handlers.ev_closed) {
+    libsock_data->cdata[idx].handlers.ev_closed(idx, u_ptr);
   }
-  dunlock(cdata[idx].appdata);
+  dunlock(libsock_data->cdata[idx].appdata);
 
-  if(cdata[idx].inbound) {
+  if(libsock_data->cdata[idx].inbound) {
     nclients--;
     /*
        if(nclients == 0) {
        debug(DBG_GLOBAL, 1, "Last client went away, close the outbound connection");
-       close(ufds[delayed_idx].fd);
-       ufds[delayed_idx].fd = -1;
+       close(libsock_data->ufds[delayed_idx].fd);
+       libsock_data->ufds[delayed_idx].fd = -1;
        }
      */
   }
@@ -433,18 +433,18 @@ ev_connectfailed(int idx)
 int
 init_idx(int idx)
 {
-  ufds[idx].events = POLLIN;
-  memset(&cdata[idx], 0, sizeof(cdata[idx]));
+  libsock_data->ufds[idx].events = POLLIN;
+  memset(&libsock_data->cdata[idx], 0, sizeof(libsock_data->cdata[idx]));
 #if 0
-  cdata[idx].xmit_list = NULL;
-  cdata[idx].written = 0;
-  cdata[idx].recv_list = NULL;
-  cdata[idx].apptype = 0;
-  cdata[idx].http_path = NULL;
-  cdata[idx].http_querystring = NULL;
-  cdata[idx].http_referer = NULL;
-  cdata[idx].listener = 0;
-  cdata[idx].http_11 = 0;
+  libsock_data->cdata[idx].xmit_list = NULL;
+  libsock_data->cdata[idx].written = 0;
+  libsock_data->cdata[idx].recv_list = NULL;
+  libsock_data->cdata[idx].apptype = 0;
+  libsock_data->cdata[idx].http_path = NULL;
+  libsock_data->cdata[idx].http_querystring = NULL;
+  libsock_data->cdata[idx].http_referer = NULL;
+  libsock_data->cdata[idx].listener = 0;
+  libsock_data->cdata[idx].http_11 = 0;
 #endif
   return 1;
 
@@ -454,8 +454,8 @@ void
 close_idx(int idx, void *u_ptr)
 {
   ev_closed(idx, u_ptr);
-  close(ufds[idx].fd);
-  ufds[idx].fd = -1;
+  close(libsock_data->ufds[idx].fd);
+  libsock_data->ufds[idx].fd = -1;
 }
 
 
@@ -499,13 +499,13 @@ initiate_connect(char *addr, int port)
   } else {
     if(errno == EINPROGRESS) {
       init_idx(nfds);
-      ufds[nfds].fd = s;
+      libsock_data->ufds[nfds].fd = s;
       /*
          the socket connection once completed, appears to cause the POLLIN rather than pollout event 
        */
-      ufds[nfds].events |= POLLOUT;     /* we want to know when we get connected */
-      cdata[nfds].connected = 0;        /* we did not connect yet */
-      cdata[nfds].inbound = 0;  /* outbound connection */
+      libsock_data->ufds[nfds].events |= POLLOUT;     /* we want to know when we get connected */
+      libsock_data->cdata[nfds].connected = 0;        /* we did not connect yet */
+      libsock_data->cdata[nfds].inbound = 0;  /* outbound connection */
       idx = nfds;
       debug(DBG_GLOBAL, 1,
             "Outbound connection in progress for index %d to %s:%d",
@@ -532,25 +532,25 @@ initiate_connect(char *addr, int port)
 int
 ev_newconn(int idx, int parent, void *u_ptr)
 {
-  bzero(&cdata[idx], sizeof(cdata[idx]));
+  bzero(&libsock_data->cdata[idx], sizeof(libsock_data->cdata[idx]));
 
-  cdata[idx].connected = 1;
-  cdata[idx].inbound = 1;
-  cdata[idx].l7state = 0;
-  cdata[idx].recv_list = 0;
+  libsock_data->cdata[idx].connected = 1;
+  libsock_data->cdata[idx].inbound = 1;
+  libsock_data->cdata[idx].l7state = 0;
+  libsock_data->cdata[idx].recv_list = 0;
   nconnections++;
 
 
   debug(DBG_GLOBAL, 1,
         "New connection on index %d, connected: %d, inbound: %d", idx,
-        cdata[idx].connected, cdata[idx].inbound);
+        libsock_data->cdata[idx].connected, libsock_data->cdata[idx].inbound);
 
-  if(cdata[parent].handlers.ev_newconn) {
-     cdata[parent].handlers.ev_newconn(idx, parent, u_ptr); 
+  if(libsock_data->cdata[parent].handlers.ev_newconn) {
+     libsock_data->cdata[parent].handlers.ev_newconn(idx, parent, u_ptr); 
   }
-  if(cdata[idx].do_ssl == 0) {
-    if(cdata[idx].handlers.ev_channel_ready) {
-      cdata[idx].handlers.ev_channel_ready(idx, u_ptr);
+  if(libsock_data->cdata[idx].do_ssl == 0) {
+    if(libsock_data->cdata[idx].handlers.ev_channel_ready) {
+      libsock_data->cdata[idx].handlers.ev_channel_ready(idx, u_ptr);
     }
   }
   return 0;
@@ -590,7 +590,7 @@ sock_get_free_index(int minimum)
   int i;
 
   for(i = minimum; i < nfds; i++) {
-    if(ufds[i].fd == -1) {
+    if(libsock_data->ufds[i].fd == -1) {
       return i;
     }
   }
@@ -627,11 +627,11 @@ bind_socket_listener_specific(int newidx, int s, char *addr, int port)
   notminus(bind(s, (struct sockaddr *) &sin, sizeof(sin)), "bind failed");
 
   init_idx(idx);
-  cdata[idx].listener = 1;
-  cdata[idx].listen_port = port;
+  libsock_data->cdata[idx].listener = 1;
+  libsock_data->cdata[idx].listen_port = port;
 
-  ufds[idx].fd = s;
-  ufds[idx].events = POLLIN;
+  libsock_data->ufds[idx].fd = s;
+  libsock_data->ufds[idx].events = POLLIN;
   debug(DBG_GLOBAL, 1,
         "Index %d - starting listening on port %d for address %s!", idx,
         port, inet_ntoa(sin.sin_addr));
@@ -650,7 +650,7 @@ bind_udp_listener_specific(char *addr, int port, char *remote)
 
   biggest_udp_idx = idx;
 
-  cdata[idx].is_udp = 1;
+  libsock_data->cdata[idx].is_udp = 1;
 
   bzero(&sin, sizeof(sin));
   sin.sin_port = 0;             //7777; // htons(port);
@@ -669,8 +669,8 @@ bind_udp_listener_specific(char *addr, int port, char *remote)
              "Connect of UDP");
   }
   // even though it is UDP, we assume it is "connected"
-  cdata[idx].connected = 1;
-  cdata[idx].inbound = 1;
+  libsock_data->cdata[idx].connected = 1;
+  libsock_data->cdata[idx].inbound = 1;
   return idx;
 }
 
@@ -683,7 +683,7 @@ bind_tcp_listener_specific(char *addr, int port)
   int idx =
     bind_socket_listener_specific(sock_get_free_index(0), s, addr, port);
 
-  cdata[idx].is_udp = 0;
+  libsock_data->cdata[idx].is_udp = 0;
   notminus(listen(s, 3), "listen() failed");
   debug(DBG_GLOBAL, 1, "TCP listener on %s:%d started with index %d!",
         addr, port, idx);
@@ -714,11 +714,11 @@ sock_tcp_listener_pollin(int i, void *u_ptr)
 {
   struct sockaddr_in sin1;
   unsigned int sin1sz = sizeof(sin1);
-  //int revents_save = ufds[i].revents;
+  //int revents_save = libsock_data->ufds[i].revents;
 
-  ufds[i].revents = 0;
+  libsock_data->ufds[i].revents = 0;
   debug(DBG_GLOBAL, 1, "before accept");
-  int s1 = accept(ufds[i].fd, (struct sockaddr *) &sin1,
+  int s1 = accept(libsock_data->ufds[i].fd, (struct sockaddr *) &sin1,
                   &sin1sz);
   int newidx = sock_get_free_index(0);
 
@@ -730,20 +730,20 @@ sock_tcp_listener_pollin(int i, void *u_ptr)
   if(nfds < MAX_FDS) {
     fcntl(s1, F_SETFL, O_NONBLOCK);
     init_idx(newidx);
-    ufds[newidx].fd = s1;
+    libsock_data->ufds[newidx].fd = s1;
     if(ev_newconn(newidx, i, u_ptr) < 0) {
       debug(DBG_GLOBAL, 1,
             "Application-specific error, closing the connection");
       close(s1);
-      ufds[newidx].fd = -1;
-      ufds[newidx].revents = 0;
+      libsock_data->ufds[newidx].fd = -1;
+      libsock_data->ufds[newidx].revents = 0;
     }
   } else {
     debug(DBG_GLOBAL, 1,
           "Could not accept new connection, too many open sockets!");
     close(s1);
   }
-  //ufds[i].revents = revents_save;
+  //libsock_data->ufds[i].revents = revents_save;
 }
 
 /**
@@ -760,18 +760,18 @@ sock_unconnected_pollinout(int i, void *u_ptr)
   int err;
   socklen_t l = sizeof(err);
 
-  if(getsockopt(ufds[i].fd, SOL_SOCKET, SO_ERROR, &err, &l) == -1) {
+  if(getsockopt(libsock_data->ufds[i].fd, SOL_SOCKET, SO_ERROR, &err, &l) == -1) {
     debug(DBG_GLOBAL, 1, "Getsockopt failure (%s)!", strerror(errno));
   }
   if(err != 0) {
     debug(DBG_GLOBAL, 1,
           "Outbound connection error for index %d: %s", i, strerror(err));
     ev_connectfailed(i);
-    close(ufds[i].fd);
-    ufds[i].fd = -1;
+    close(libsock_data->ufds[i].fd);
+    libsock_data->ufds[i].fd = -1;
   } else {
     debug(DBG_GLOBAL, 1, "Index %d successfully connected", i);
-    cdata[i].connected = 1;
+    libsock_data->cdata[i].connected = 1;
     ev_newconn(i, -1, u_ptr);
   }
 }
@@ -782,18 +782,18 @@ sock_ssl_check_error(int i, int ret, void *u_ptr)
   int err;
   int err2;
 
-  switch (err = SSL_get_error(cdata[i].ssl, ret)) {
+  switch (err = SSL_get_error(libsock_data->cdata[i].ssl, ret)) {
   case SSL_ERROR_NONE:
-    ufds[i].events = POLLIN;
+    libsock_data->ufds[i].events = POLLIN;
     break;
   case SSL_ERROR_ZERO_RETURN:
     close_idx(i, u_ptr);
     break;
   case SSL_ERROR_WANT_READ:
-    ufds[i].events |= POLLIN;
+    libsock_data->ufds[i].events |= POLLIN;
     break;
   case SSL_ERROR_WANT_WRITE:
-    ufds[i].events |= POLLOUT;
+    libsock_data->ufds[i].events |= POLLOUT;
     break;
   case SSL_ERROR_SYSCALL:
     err2 = ERR_get_error();
@@ -817,10 +817,10 @@ sock_ssl_pollinout(int i, void *u_ptr)
 {
   int ret;
 
-  if((ret = ssl_negotiate(i, cdata[i].inbound)) == 1) {
-    cdata[i].do_ssl = 0;
+  if((ret = ssl_negotiate(i, libsock_data->cdata[i].inbound)) == 1) {
+    libsock_data->cdata[i].do_ssl = 0;
     debug(DBG_GLOBAL, 11, "SSL done!! (idx %d)", i);
-    ufds[i].events = POLLIN;
+    libsock_data->ufds[i].events = POLLIN;
     ev_channel_ready(i, u_ptr);
   } else {
     sock_ssl_check_error(i, ret, u_ptr);
@@ -831,20 +831,20 @@ sock_ssl_pollinout(int i, void *u_ptr)
 int
 sock_receive_data(int i, dbuf_t * d)
 {
-  if(cdata[i].is_udp == 1) {
-    socklen_t remote_len = sizeof(cdata[i].remote);
+  if(libsock_data->cdata[i].is_udp == 1) {
+    socklen_t remote_len = sizeof(libsock_data->cdata[i].remote);
 
     d->dsize =
-      recvfrom(ufds[i].fd, d->buf, d->size, 0,
-               (struct sockaddr *) &cdata[i].remote, &remote_len);
+      recvfrom(libsock_data->ufds[i].fd, d->buf, d->size, 0,
+               (struct sockaddr *) &libsock_data->cdata[i].remote, &remote_len);
   } else {
-    if(cdata[i].is_ssl) {
-      d->dsize = SSL_read(cdata[i].ssl, d->buf, d->size);
+    if(libsock_data->cdata[i].is_ssl) {
+      d->dsize = SSL_read(libsock_data->cdata[i].ssl, d->buf, d->size);
     } else {
-      d->dsize = read(ufds[i].fd, d->buf, d->size);
+      d->dsize = read(libsock_data->ufds[i].fd, d->buf, d->size);
     }
   }
-  cdata[i].rx_count++;
+  libsock_data->cdata[i].rx_count++;
   return d->dsize;
 }
 
@@ -861,7 +861,7 @@ sock_receive_data(int i, dbuf_t * d)
 void
 sock_connected_pollin(int i, void *u_ptr)
 {
-  if(cdata[i].do_ssl) {
+  if(libsock_data->cdata[i].do_ssl) {
     sock_ssl_pollinout(i, u_ptr);
   } else {
     dbuf_t *d = NULL;
@@ -896,22 +896,22 @@ sock_send_data(int i, dbuf_t * d)
 {
   int nwrote;
 
-  if(cdata[i].is_udp) {
+  if(libsock_data->cdata[i].is_udp) {
     nwrote =
-      sendto(ufds[i].fd,
-             &d->buf[cdata[i].written],
-             d->dsize - cdata[i].written,
-             0, (struct sockaddr *) &cdata[i].remote,
-             sizeof(cdata[i].remote));
+      sendto(libsock_data->ufds[i].fd,
+             &d->buf[libsock_data->cdata[i].written],
+             d->dsize - libsock_data->cdata[i].written,
+             0, (struct sockaddr *) &libsock_data->cdata[i].remote,
+             sizeof(libsock_data->cdata[i].remote));
   } else {
-    if(cdata[i].is_ssl) {
+    if(libsock_data->cdata[i].is_ssl) {
       nwrote =
-        SSL_write(cdata[i].ssl,
-                  &d->buf[cdata[i].written], d->dsize - cdata[i].written);
+        SSL_write(libsock_data->cdata[i].ssl,
+                  &d->buf[libsock_data->cdata[i].written], d->dsize - libsock_data->cdata[i].written);
     } else {
       nwrote =
-        write(ufds[i].fd,
-              &d->buf[cdata[i].written], d->dsize - cdata[i].written);
+        write(libsock_data->ufds[i].fd,
+              &d->buf[libsock_data->cdata[i].written], d->dsize - libsock_data->cdata[i].written);
     }
   }
   return nwrote;
@@ -927,31 +927,31 @@ sock_send_data(int i, dbuf_t * d)
 void
 sock_connected_pollout(int i, void *u_ptr)
 {
-  if(cdata[i].do_ssl) {
+  if(libsock_data->cdata[i].do_ssl) {
     sock_ssl_pollinout(i, u_ptr);
   } else {
-    if(cdata[i].xmit_list != NULL) {
-      dbuf_t *d = rpeek(&cdata[i].xmit_list);
+    if(libsock_data->cdata[i].xmit_list != NULL) {
+      dbuf_t *d = rpeek(&libsock_data->cdata[i].xmit_list);
       int nwrote;
 
       if(d->dsize > 0) {
-        if(cdata[i].is_udp && cdata[i].rx_count == 0) {
-          nwrote = d->dsize - cdata[i].written;
+        if(libsock_data->cdata[i].is_udp && libsock_data->cdata[i].rx_count == 0) {
+          nwrote = d->dsize - libsock_data->cdata[i].written;
           debug(DBG_GLOBAL, 1, "UDP index %d not connected yet, discard data",
                 i);
         } else {
           nwrote = sock_send_data(i, d);
         }
         debug(DBG_GLOBAL, 1, "written: %d out of %d", nwrote, d->dsize);
-        if(nwrote + cdata[i].written == d->dsize) {
+        if(nwrote + libsock_data->cdata[i].written == d->dsize) {
           debug(DBG_GLOBAL, 1, "done writing");
           dunlock(d);
-          rpop(&cdata[i].xmit_list);    /* and delete the item off the list */
-          cdata[i].written = 0; /* did not write anything yet from the next one */
-          cdata[i].tx_count++;
+          rpop(&libsock_data->cdata[i].xmit_list);    /* and delete the item off the list */
+          libsock_data->cdata[i].written = 0; /* did not write anything yet from the next one */
+          libsock_data->cdata[i].tx_count++;
         } else if(nwrote < d->dsize) {
           // Retry to write more data later
-          cdata[i].written += nwrote;
+          libsock_data->cdata[i].written += nwrote;
           debug(DBG_GLOBAL, 1, "retry writing later");
         }
       } else {
@@ -959,7 +959,7 @@ sock_connected_pollout(int i, void *u_ptr)
         debug(DBG_GLOBAL, 10, "Seen empty xmit buf - closing index %d", i);
         close_idx(i, u_ptr);
       }
-      if(cdata[i].xmit_list == NULL && 0) {
+      if(libsock_data->cdata[i].xmit_list == NULL && 0) {
         debug(DBG_GLOBAL, 10, "Nothing left to send - closing index %d", i);
         close_idx(i, u_ptr);
       }
@@ -968,12 +968,12 @@ sock_connected_pollout(int i, void *u_ptr)
      * if the list was or has become empty - we're not 
      * interested in knowing when we can write anymore
      */
-    if(cdata[i].xmit_list == NULL && cdata[i].do_ssl == 0) {
-      ufds[i].events &= ~POLLOUT;
+    if(libsock_data->cdata[i].xmit_list == NULL && libsock_data->cdata[i].do_ssl == 0) {
+      libsock_data->ufds[i].events &= ~POLLOUT;
       // TODO: also handling of the keepalive timer ? 
       /*
          debug(DBG_GLOBAL, 1, "Index %d was without keepalive, closing.", i);
-         close(ufds[i].fd); ufds[i].fd = -1; 
+         close(libsock_data->ufds[i].fd); libsock_data->ufds[i].fd = -1; 
        */
     }
   }
@@ -991,23 +991,23 @@ sock_remove_closed_fds(void)
   int i;
 
   for(i = nfds - 1; i >= 0; i--) {
-    if(ufds[i].fd == -1) {
-      ufds[i].events = 0;
-      if(ufds[i].fd == nfds - 1) {
+    if(libsock_data->ufds[i].fd == -1) {
+      libsock_data->ufds[i].events = 0;
+      if(libsock_data->ufds[i].fd == nfds - 1) {
         nfds--;
       }
     }
   }
 #if 0
   for(i = 0; i < nfds; i++) {
-    if(ufds[i].fd == -1) {
-      while(ufds[nfds - 1].fd == -1 && nfds > 0 && i < nfds) {
+    if(libsock_data->ufds[i].fd == -1) {
+      while(libsock_data->ufds[nfds - 1].fd == -1 && nfds > 0 && i < nfds) {
         nfds--;
       }
       if(i < nfds) {
-        ufds[i].fd = ufds[nfds - 1].fd;
-        ufds[i].events = ufds[nfds - 1].events;
-        memcpy(&cdata[i], &cdata[nfds - 1], sizeof(cdata[0]));  /* also move the connection data */
+        libsock_data->ufds[i].fd = libsock_data->ufds[nfds - 1].fd;
+        libsock_data->ufds[i].events = libsock_data->ufds[nfds - 1].events;
+        memcpy(&libsock_data->cdata[i], &libsock_data->cdata[nfds - 1], sizeof(libsock_data->cdata[0]));  /* also move the connection data */
         nfds--;
       }
     }
@@ -1022,26 +1022,26 @@ int sock_one_cycle(int timeout, void *u_ptr) {
     debug(DBG_GLOBAL, 125, "poll(%d)", nfds);
     poll(ufds, nfds, timeout);
     for(i = 0; i < nfds; i++) {
-      if(cdata[i].listener && cdata[i].is_udp == 0) {
+      if(libsock_data->cdata[i].listener && libsock_data->cdata[i].is_udp == 0) {
         // TCP listener sockets 
-        if(ufds[i].revents & POLLIN) {
+        if(libsock_data->ufds[i].revents & POLLIN) {
           sock_tcp_listener_pollin(i, u_ptr);
 	  nevents++;
         }
       } else {
         // non-listener sockets - this includes UDP
-        if(ufds[i].revents & POLLIN) {
+        if(libsock_data->ufds[i].revents & POLLIN) {
           debug(DBG_GLOBAL, 10, "%d: POLLIN", i);
-          if(cdata[i].connected == 0) {
+          if(libsock_data->cdata[i].connected == 0) {
             sock_unconnected_pollinout(i, u_ptr);
           } else {
             sock_connected_pollin(i, u_ptr);
           }
 	  nevents++;
         }
-        if(ufds[i].revents & POLLOUT) {
+        if(libsock_data->ufds[i].revents & POLLOUT) {
           debug(DBG_GLOBAL, 10, "%d: POLLOUT", i);
-          if(cdata[i].connected == 0) {
+          if(libsock_data->cdata[i].connected == 0) {
             debug(DBG_GLOBAL, 11, "..on a nonconnected socket...");
             sock_unconnected_pollinout(i, u_ptr);
           } else {
@@ -1050,16 +1050,16 @@ int sock_one_cycle(int timeout, void *u_ptr) {
           }
 	  nevents++;
         }
-        if(ufds[i].revents & POLLERR) {
+        if(libsock_data->ufds[i].revents & POLLERR) {
           debug(DBG_GLOBAL, 11, "%d: POLLERR", i);
         }
-        if(ufds[i].revents & POLLHUP) {
+        if(libsock_data->ufds[i].revents & POLLHUP) {
           debug(DBG_GLOBAL, 11, "%d: POLLHUP", i);
         }
-        if(ufds[i].revents & POLLNVAL) {
+        if(libsock_data->ufds[i].revents & POLLNVAL) {
           debug(DBG_GLOBAL, 11, "%d: POLLNVAL", i);
         }
-        ufds[i].revents = 0;
+        libsock_data->ufds[i].revents = 0;
       }
     }
     sock_remove_closed_fds();
