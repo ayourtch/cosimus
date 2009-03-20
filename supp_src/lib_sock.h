@@ -45,6 +45,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#include "libsupp.h"
+
 
 /**** Event handler function pointer types */
 typedef void (*sock_ev_channel_ready_t)(int idx, void *u_ptr);
@@ -86,6 +88,8 @@ void close_idx(int idx, void *u_ptr);
 int bind_udp_listener_specific(char *addr, int port, char *remote);
 
 void pkt_dprint_cdata_all(dbuf_t * d);
+
+void *libsock_init(void *data);
 
 
 #endif

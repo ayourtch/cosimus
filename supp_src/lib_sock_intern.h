@@ -67,7 +67,7 @@ typedef struct {
   conndata_t cdata[MAX_FDS];
   int nfds;
   int nclients;               /* number of active inbound connections */
-  long nconnections;          /* counter for incoming connections */
+  //long nconnections;          /* counter for incoming connections */
   int biggest_udp_idx;        /* the biggest index of the UDP sockets */
 } lib_sock_runtime_data_t;
 
