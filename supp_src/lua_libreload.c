@@ -22,7 +22,7 @@ fn_child(lua_State *L) {
 
     lua_getglobal(L1, "libreload");
     lua_pushstring(L1, "parent_L");
-    printf("Setting Lua parent to %x\n", (unsigned int)L);
+    // printf("Setting Lua parent to %x\n", (unsigned int)L);
     lua_pushlightuserdata(L1, L);
     lua_settable(L1,-3);
     lua_pop(L1, 1);
@@ -57,11 +57,11 @@ fn_parent_run(lua_State *L1) {
   lua_pushstring(L1, "parent_L");
   lua_gettable(L1, -2);
   L = lua_touserdata(L1, -1);
-  // lua_pop(L1, 1);
-  printf("Lua parent from parent_run: %x\n", (unsigned int) L);
+  lua_pop(L1, 1);
+  //printf("Lua parent from parent_run: %x\n", (unsigned int) L);
 
   if (L) {
-    printf("Calling: %s with arg %s\n", func, (char *)s_arg);
+    //printf("Calling: %s with arg %s\n", func, (char *)s_arg);
     lua_getglobal(L, func);
     lua_pushstring(L, s_arg);
     lua_pushlightuserdata(L, p_arg);

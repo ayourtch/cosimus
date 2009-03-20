@@ -1067,11 +1067,11 @@ int sock_one_cycle(int timeout, void *u_ptr) {
 
 void *libsock_init(void *data)
 {
-  printf("Libsock init, orig data: %x\n", (unsigned int)data);
+  //printf("Libsock init, orig data: %x\n", (unsigned int)data);
   if(data == NULL) {
     data = calloc(1, sizeof(*libsock_data));
   }
-  printf("Libsock init, data: %x\n", (unsigned int)data);
+  //printf("Libsock init, data: %x\n", (unsigned int)data);
   libsock_data = data;
   return data;
 }
