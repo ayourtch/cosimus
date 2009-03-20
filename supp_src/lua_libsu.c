@@ -1,6 +1,7 @@
 #include "lib_dbuf.h"
 #include "lib_debug.h"
 #include "lib_sock.h"
+#include "lib_httpd.h"
 #include <stdlib.h>
 #include <lauxlib.h>
 
@@ -133,6 +134,15 @@ lua_fn_run_cycles(lua_State *L) {
   return 1;
 }
 
+static int
+lua_fn_http_start_listener(lua_State *L)
+{
+  const char *addr = luaL_checkstring(L, 1);
+  int port = luaL_checkint(L, 2);
+  http_start_listener((void *)addr, port, NULL);
+  return 0;
+}
+
 
 static const luaL_reg su_lib[] = {
   {"set_debug_level", lua_fn_set_debug_level },
@@ -148,6 +158,7 @@ static const luaL_reg su_lib[] = {
   {"cdata_check_remote4", lua_fn_cdata_check_remote4 },
   {"sock_send_data", lua_fn_sock_send_data },
   { "run_cycles", lua_fn_run_cycles },
+  { "http_start_listener", lua_fn_http_start_listener },
 
   {NULL, NULL}
 };
