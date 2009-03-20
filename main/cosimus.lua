@@ -37,7 +37,7 @@ end
 keep_running = true
 
 while keep_running do
-  local result, details = run_child("cos_child", "---")
+  local result, details = run_child("child_cos", "---")
   if result == "return" then
     if details == "quit" then
       keep_running = false
