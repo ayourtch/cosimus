@@ -161,6 +161,6 @@ print("Lua startup complete!\n")
 local ncycles = 1
 while true do
   print("Running some cycles:", ncycles)
-  ncycles = 1 + smv.run_cycles(ncycles)
+  ncycles = 1 + su.run_cycles(ncycles)
 end
 
