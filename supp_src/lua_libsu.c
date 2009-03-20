@@ -143,6 +143,17 @@ lua_fn_http_start_listener(lua_State *L)
   return 0;
 }
 
+static int
+lua_fn_libsupp_init(lua_State *L)
+{
+  void *ptr = NULL;
+  if (!lua_isnil(L, 1)) {
+    ptr = lua_touserdata(L, 1);
+  }
+  ptr = libsupp_init(ptr);
+  lua_pushlightuserdata(L, ptr);
+  return 1;
+}
 
 static const luaL_reg su_lib[] = {
   {"set_debug_level", lua_fn_set_debug_level },
@@ -159,6 +170,7 @@ static const luaL_reg su_lib[] = {
   {"sock_send_data", lua_fn_sock_send_data },
   { "run_cycles", lua_fn_run_cycles },
   { "http_start_listener", lua_fn_http_start_listener },
+  { "libsupp_init", lua_fn_libsupp_init },
 
   {NULL, NULL}
 };
