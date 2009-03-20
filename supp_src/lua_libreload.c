@@ -20,7 +20,7 @@ fn_child(lua_State *L) {
     lua_getglobal(L1, "main");
     lua_pushstring(L1, arg);
 
-    lua_getglobal(L1, "reload");
+    lua_getglobal(L1, "libreload");
     lua_pushstring(L1, "parent_L");
     printf("Setting Lua parent to %x\n", (unsigned int)L);
     lua_pushlightuserdata(L1, L);
@@ -53,7 +53,7 @@ fn_parent_run(lua_State *L1) {
   void *p_arg = lua_touserdata(L1, 3);
   int err;
 
-  lua_getglobal(L1, "reload");
+  lua_getglobal(L1, "libreload");
   lua_pushstring(L1, "parent_L");
   lua_gettable(L1, -2);
   L = lua_touserdata(L1, -1);
@@ -89,6 +89,6 @@ static const luaL_reg libreload[] = {
 };
 
 LUA_API int luaopen_libreload (lua_State *L) {
-  luaL_openlib(L, "reload", libreload, 0);
+  luaL_openlib(L, "libreload", libreload, 0);
   return 1;
 }
