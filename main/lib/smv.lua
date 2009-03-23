@@ -79,6 +79,7 @@ end
 function smv_send_parcel_overlay(sess)
   local LAND_BLOCKS_PER_PACKET = 1024
   local sequence = 0
+  local parceldata = ''
   for y = 1, 64 do
     for x = 1, 64 do
       -- fill the data about the land somewhere
@@ -146,6 +147,9 @@ function smv_packet(idx, d)
     if sess then
       if gid == "CompleteAgentMovement" then
         smv_send_agent_movement_complete(sess)
+	smv_send_parcel_overlay(sess)
+	smv.SendLayerData(sess)
+
       elseif gid == "RequestImage" then
         local bs = fmv.Get_RequestImage_RequestImageBlockSize(d)
         print ("Image request blocks: " .. tostring(bs))
