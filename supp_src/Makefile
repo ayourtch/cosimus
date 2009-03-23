@@ -15,7 +15,7 @@ libsupp.so: $(OBJS)
 	 cp $@ ../lib/$@.tmp
 	 mv ../lib/$@.tmp ../lib/$@
 
-libreload.so: lua_libreload.o
+libreload.so: lua_libreload.o libreload.o
 	 $(CC) -shared -o $@ $^ $(LIBS)
 	 cp $@ ../lib/$@.tmp
 	 mv ../lib/$@.tmp ../lib/$@
