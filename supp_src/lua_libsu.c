@@ -7,6 +7,16 @@
 #include <lauxlib.h>
 
 
+int lua_pcall_with_debug_ex(lua_State *L, int nargs, int nresults, int dbgtype, int level, char *file, int lineno)
+{
+  int err = lua_pcall(L, nargs, nresults, 0);
+  if(err != 0) {
+    debug(dbgtype, level, "Lua error while performing lua_pcall at %s:%d: %s",
+         file, lineno, lua_tostring(L, 1));
+  }
+  return err;
+}
+
 static void *lua_checkdbuf(lua_State *L, int index)
 {
   if(lua_islightuserdata(L, index)) {
