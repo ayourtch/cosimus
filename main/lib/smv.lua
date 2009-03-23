@@ -145,9 +145,6 @@ function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
   local remote_str = remote_addr .. ':' .. tostring(remote_port)
-  if not (gid == "AgentUpdate") then
-    print("Packet received on index " .. tostring(idx) .. " - " .. gid .. "\n")
-  end
   if gid == "UseCircuitCode" then
     local circuit_code, session_id, user_id = fmv.Get_UseCircuitCode_CircuitCode(d)
     print("Circuit code: " .. tostring(circuit_code))
@@ -184,6 +181,8 @@ function smv_packet(idx, d)
         smv_ping_check_reply(sess, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
+      elseif gid == "AgentUpdate" then
+        -- frequent agent updates go here
       elseif gid == "MoneyBalanceRequest" then
         smv_send_money_balance(sess, d)
       elseif gid == "LogoutRequest" then
@@ -191,6 +190,8 @@ function smv_packet(idx, d)
       elseif gid == "RequestImage" then
         local bs = fmv.Get_RequestImage_RequestImageBlockSize(d)
         print ("Image request blocks: " .. tostring(bs))
+      else
+        print("Packet received on index " .. tostring(idx) .. " - " .. gid .. "\n")
       end
     else
       print("Could not find session for remote " .. remote_str)
