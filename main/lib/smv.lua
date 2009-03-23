@@ -100,6 +100,11 @@ function smv_get_region_handle()
   return fmv.GetRegionHandle(1000, 1000)
 end
 
+function smv_ping_check_reply(sess, ping)
+ su.dlock(ping)
+ smv_send_then_unlock(sess, ping)
+end
+
 function smv_send_agent_movement_complete(sess)
   local p = fmv.packet_new()
   fmv.AgentMovementCompleteHeader(p)
@@ -118,7 +123,9 @@ function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
   local remote_str = remote_addr .. ':' .. tostring(remote_port)
-  print("Packet received on index " .. tostring(idx) .. " - " .. gid .. "\n")
+  if not (gid == "AgentUpdate") then
+    print("Packet received on index " .. tostring(idx) .. " - " .. gid .. "\n")
+  end
   if gid == "UseCircuitCode" then
     local circuit_code, session_id, user_id = fmv.Get_UseCircuitCode_CircuitCode(d)
     print("Circuit code: " .. tostring(circuit_code))
@@ -150,6 +157,10 @@ function smv_packet(idx, d)
 	smv_send_parcel_overlay(sess)
 	smv.SendLayerData(sess)
 
+      elseif gid == "StartPingCheck" then
+        smv_ping_check_reply(sess, d)
+      elseif gid == "CompletePingCheck" then
+        smv_ping_check_reply(sess, d)
       elseif gid == "RequestImage" then
         local bs = fmv.Get_RequestImage_RequestImageBlockSize(d)
         print ("Image request blocks: " .. tostring(bs))

@@ -39,9 +39,9 @@ function main(start)
   watch_file(cpath .. "libsupp.so")
 
   while(keep_running) do
-    print("Running some cycles")
+    -- print("Running some cycles")
     su.run_cycles(1)
-    print("Finished running cycles")
+    -- print("Finished running cycles")
     if files_changed() then
       keep_running = false
     end
