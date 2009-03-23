@@ -11,6 +11,7 @@ function get_runtime_state(libname)
 end
 
 function set_runtime_state(libname, state)
+  print('Parent setting state of ', libname, ' to ', state)
   runtime_state[libname] = state
   return state
 end

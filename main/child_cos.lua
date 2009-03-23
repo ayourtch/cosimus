@@ -29,6 +29,10 @@ function main(start)
     print "coldstart!\n"
     su.http_start_listener("0.0.0.0", 2222);
     smv.coldstart()
+  else
+    print "warmstart!\n"
+    local smv_ser = libreload.parent_run("get_runtime_state", "smv_lua_state", nil)
+    deserialize(smv_ser)
   end
   keep_running = true
   retcode = "restart"
@@ -44,6 +48,9 @@ function main(start)
     -- print("Finished running cycles")
     if files_changed() then
       keep_running = false
+      local smv_ser = smv.serialize()
+      print("setting parent state to: ", smv_ser)
+      libreload.parent_run("set_runtime_state", "smv_lua_state", smv_ser)
     end
   end
   return retcode

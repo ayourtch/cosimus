@@ -1,4 +1,4 @@
--- package.cpath="../../lib/?.so"
+--package.cpath="../../lib/?.so"
 require 'libsupp'
 
 
@@ -43,9 +43,11 @@ function serialize(name, value)
   local d = su.dalloc(8192)
   local s
   FullSerialize(name, value, d)
-  s = su.dgetstr(d)
-  su.dunlock(d)
-  return s
+  return d
+end
+function deserialize(dbuf)
+  print("Deserializing from: ", dbuf)
+  assert(loadstring(su.dgetstr(dbuf)))()
 end
 
 local xxxxtest = [[
@@ -54,5 +56,12 @@ t['"'] = true
 t['\''] = false
 t["\0"] = "zero"
 
-print(serialize("t", t))
+x = serialize("t", t)
+t = {}
+deserialize(x)
+
+print(su.dgetstr(serialize("t", t)))
+
+
 ]]
+

@@ -1,9 +1,11 @@
 require 'libfmv'
 require 'libsupp'
 require 'libpktsmv'
+require 'serialize'
 
-smv_sessions = {}
-smv_sessions_by_remote = {}
+smv_state = {}
+smv_state.sessions = {}
+smv_state.sess_id_by_remote = {}
 
 zero_uuid = "00000000-0000-0000-0000-000000000000"
 
@@ -131,12 +133,12 @@ function smv_packet(idx, d)
     print("Circuit code: " .. tostring(circuit_code))
     print("session_id: " .. session_id)
     print("user_id: " .. user_id)
-    if(smv_sessions[session_id]) then
+    if(smv_state.sessions[session_id]) then
       print("Duplicate usecircuitcode!\n")
     else
       local sess = {}
-      smv_sessions[session_id] = sess
-      smv_sessions_by_remote[remote_str] = sess
+      smv_state.sessions[session_id] = sess
+      smv_state.sess_id_by_remote[remote_str] = session_id
 
       sess.idx = idx
       sess.circuit_code = circuit_code
@@ -150,7 +152,7 @@ function smv_packet(idx, d)
       smv_send_region_handshake(sess)
     end
   else 
-    local sess = smv_sessions_by_remote[remote_str]
+    local sess = smv_state.sessions[smv_state.sess_id_by_remote[remote_str]]
     if sess then
       if gid == "CompleteAgentMovement" then
         smv_send_agent_movement_complete(sess)
@@ -176,3 +178,9 @@ smv.coldstart = function()
   print("Lua SMV startup complete!\n")
 end
 
+smv.serialize = function()
+  local s = serialize("smv_state", smv_state)
+  print "Serialized Lua state: "
+  print(s)
+  return s
+end
