@@ -120,6 +120,26 @@ function smv_send_agent_movement_complete(sess)
   smv_send_then_unlock(sess, p)
 end
 
+function smv_send_money_balance(sess, d)
+  local p = fmv.packet_new()
+  local TransactionID = fmv.Get_MoneyBalanceRequest_MoneyData(d)
+  fmv.MoneyBalanceReplyHeader(p)
+  fmv.MoneyBalanceReply_MoneyData(p, sess.AgentID, TransactionID, 
+     1, -- TransactionSuccess
+     1000.0, -- MoneyBalance
+     0, -- SquareMetersCredit
+     0, -- SquareMetersCommitted
+     "" -- Description
+     )
+  smv_send_then_unlock(sess, p)
+end
+
+function smv_logout_session(sess)
+  local session_id = sess.SessionID
+  print("Logging out session ", session_id)
+  smv_state.sess_id_by_remote[sess.remote_str] = nil
+  smv_state.sessions[session_id] = nil
+end
 
 function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
@@ -146,6 +166,7 @@ function smv_packet(idx, d)
       sess.AgentID = user_id
       sess.remote_addr = remote_addr
       sess.remote_port = remote_port
+      sess.remote_str = remote_str
       sess.seq = 0
 
       smv_ack_immed(sess, d)
@@ -163,6 +184,10 @@ function smv_packet(idx, d)
         smv_ping_check_reply(sess, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
+      elseif gid == "MoneyBalanceRequest" then
+        smv_send_money_balance(sess, d)
+      elseif gid == "LogoutRequest" then
+        smv_logout_session(sess)
       elseif gid == "RequestImage" then
         local bs = fmv.Get_RequestImage_RequestImageBlockSize(d)
         print ("Image request blocks: " .. tostring(bs))
