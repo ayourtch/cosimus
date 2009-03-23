@@ -868,3 +868,8 @@ MaybeZeroDecodePacket(dbuf_t *d) {
   return d1;
 }
 
+dbuf_t *
+PacketNew() {
+  return dalloc(3000);
+}
+

@@ -93,7 +93,7 @@ void *luaL_checkuserdata(lua_State *L, int n)
 
 static int
 lua_fn_packet_new(lua_State *L) {
-  dbuf_t *d = dalloc(1500);
+  dbuf_t *d = PacketNew(1500);
   lua_pushlightuserdata(L, d);
   return 1;
 }

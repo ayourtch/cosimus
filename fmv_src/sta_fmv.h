@@ -127,6 +127,7 @@ dbuf_t *ZeroEncodePacket(dbuf_t *d);
 dbuf_t *ZeroDecodePacket(dbuf_t *d);
 dbuf_t *MaybeZeroEncodePacket(dbuf_t *d);
 dbuf_t *MaybeZeroDecodePacket(dbuf_t *d);
+dbuf_t *PacketNew();
 
 
 #if defined __cplusplus
