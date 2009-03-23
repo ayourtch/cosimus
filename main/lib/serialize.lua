@@ -1,4 +1,6 @@
+-- package.cpath="../../lib/?.so"
 require 'libsupp'
+
 
 
 function basicSerialize (o)
@@ -46,3 +48,11 @@ function serialize(name, value)
   return s
 end
 
+local xxxxtest = [[
+t = {}
+t['"'] = true
+t['\''] = false
+t["\0"] = "zero"
+
+print(serialize("t", t))
+]]
