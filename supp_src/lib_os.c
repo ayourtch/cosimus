@@ -110,6 +110,18 @@ makedaemon(char *logname)
   debug(DBG_GLOBAL, 0, "Started as a daemon");
 }
 
+time_t get_file_mtime(char *fname)
+{
+  struct stat st;
+  if (0 == stat(fname, &st)) {
+    return st.st_mtime;
+  } else {
+    return -1;
+  }
+
+}
+
+
 /*@}*/
 
 

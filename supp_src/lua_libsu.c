@@ -1,6 +1,7 @@
 #include "lib_dbuf.h"
 #include "lib_debug.h"
 #include "lib_sock.h"
+#include "lib_os.h"
 #include "lib_httpd.h"
 #include <stdlib.h>
 #include <lauxlib.h>
@@ -155,6 +156,20 @@ lua_fn_libsupp_init(lua_State *L)
   return 1;
 }
 
+static int
+lua_fn_get_file_mtime(lua_State *L)
+{
+  char *fname = (void *)luaL_checkstring(L, 1);
+  time_t mtime = get_file_mtime(fname);
+  if (mtime > 0) {
+    lua_pushnumber(L, mtime);
+  } else {
+    lua_pushnil(L);
+  }
+  return 1;
+}
+
+
 static const luaL_reg su_lib[] = {
   {"set_debug_level", lua_fn_set_debug_level },
   {"print_dbuf", lua_fn_print_dbuf },
@@ -171,6 +186,7 @@ static const luaL_reg su_lib[] = {
   { "run_cycles", lua_fn_run_cycles },
   { "http_start_listener", lua_fn_http_start_listener },
   { "libsupp_init", lua_fn_libsupp_init },
+  { "get_file_mtime", lua_fn_get_file_mtime },
 
   {NULL, NULL}
 };
