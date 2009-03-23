@@ -1,6 +1,6 @@
 require 'libfmv'
 require 'libsupp'
-require 'pkt-smv'
+require 'libpktsmv'
 
 smv_sessions = {}
 smv_sessions_by_remote = {}
@@ -156,11 +156,8 @@ function smv_packet(idx, d)
   end
 end
 
-smv.start_listener("0.0.0.0", 9000)
-print("Lua startup complete!\n")
-local ncycles = 1
-while true do
-  print("Running some cycles:", ncycles)
-  ncycles = 1 + su.run_cycles(ncycles)
+smv.coldstart = function()
+  smv.start_listener("0.0.0.0", 9000)
+  print("Lua SMV startup complete!\n")
 end
 

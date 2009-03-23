@@ -45,7 +45,7 @@ static const luaL_reg smvlib[] = {
   { NULL, NULL }
 };
 
-LUA_API int luaopen_smv (lua_State *L) {
+LUA_API int luaopen_libpktsmv (lua_State *L) {
   luaL_openlib(L, "smv", smvlib, 0);
   return 1;
 }

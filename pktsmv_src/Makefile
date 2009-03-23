@@ -1,12 +1,12 @@
 include ../Makefile.inc
 
-all: pkt-smv.so
+all: libpktsmv.so
 
-pkt-smv.so: pkt-smv.o
+libpktsmv.so: pktsmv.o
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,$@ -o $@ $^ $(LIBS) -lfmv
 	cp $@ ../lib/$@.tmp
 	mv ../lib/$@.tmp ../lib/$@
 
 
 clean:
-	rm -f *.o pkt-smv.so
+	rm -f *.o libpktsmv.so

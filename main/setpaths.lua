@@ -1,3 +1,3 @@
-package.path = "./?.lua"
+package.path = "./?.lua;./lib/?.lua"
 package.cpath = "../lib/?.so"
 
