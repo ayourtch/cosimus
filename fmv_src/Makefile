@@ -21,7 +21,8 @@ gen_fmv.o: gen_fmv.h gen_fmv.c sta_fmv.h
 
 libfmv.so: gen_fmv.o sta_fmv.o lua_fmv.o
 	$(CC) -shared -Wl,-soname,libfmv.so -o $@ $^ $(LIBS)
-	cp $@ ../lib/
+	cp $@ ../lib/$@.tmp
+	mv ../lib/$@.tmp ../lib/$@
 
 clean:
 	rm -f gen_fmv.[ch]
