@@ -426,6 +426,65 @@ function smv_agent_update_received(sess, d)
 
 end
 
+function smv_asset_upload_request(sess, d)
+  local p = fmv.packet_new()
+  local newasset = {}
+  local uuid = fmv.uuid_create()
+  local TransactionID, Type, Tempfile, StoreLocal, AssetData = fmv.Get_AssetUploadRequest_AssetBlock(d)
+  print("Asset upload request: ", TransactionID, Type, Tempfile, StoreLocal, #AssetData)
+  print("Asset Data:", AssetData)
+  fmv.AssetUploadCompleteHeader(p)
+  fmv.AssetUploadComplete_AssetBlock(p, TransactionID, Type, true)
+  smv_send_then_unlock(sess, p)
+end
+
+function smv_create_inventory_item(sess, d)
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_CreateInventoryItem_AgentData(d)
+  local CallbackID, FolderID, TransactionID, NextOwnerMask, Type, InvType, 
+        WearableType, Name, Description = fmv.Get_CreateInventoryItem_InventoryBlock(d)
+
+  local ItemID = fmv.uuid_create();
+  local BaseMask = NextOwnerMask;
+  local AssetID = fmv.uuid_create();
+  local Flags = 0
+
+  print("TransactionID for create inventory item:", TransactionID)
+
+  fmv.UpdateCreateInventoryItemHeader(p)
+  fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
+      1, -- SimApproved
+      TransactionID -- TransactionID
+    )
+  fmv.UpdateCreateInventoryItem_InventoryDataBlockSize(p,1)
+  fmv.UpdateCreateInventoryItem_InventoryDataBlock(p, 0, 
+      ItemID, 
+      FolderID, 
+      CallbackID,
+      AgentID, -- CreatorID
+      AgentID, -- OwnerID
+      zero_uuid, -- GroupID
+      BaseMask, -- BaseMask
+      BaseMask, -- OwnerMask
+      BaseMask, -- GroupMask
+      BaseMask, -- EveryoneMask
+      NextOwnerMask, -- NextOwnerMask
+      false, -- GroupOwned
+      AssetID, -- AssetID
+      Type, -- Type
+      InvType, -- InvType
+      Flags, -- Flags
+      0, -- SaleType,
+      123, -- SalePrice
+      Name, -- Name
+      Description, -- Description
+      100000, -- CreationDate
+      0 -- CRC
+    )
+  smv_send_then_unlock(sess, p)
+end
+
+
 function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
@@ -460,7 +519,7 @@ function smv_packet(idx, d)
     if sess then
       if gid == "PacketAck" then
       elseif fmv.IsReliable(d) then
-        print("Got a reliable packet!\n")
+        -- print("Got a reliable packet!\n")
         smv_ack_immed(sess, d)
       end
       if gid == "PacketAck" then
@@ -485,7 +544,13 @@ function smv_packet(idx, d)
       elseif gid == "AgentHeightWidth" then
         smv_agent_width_height(sess, d)
       elseif gid == "AgentWearablesRequest" then
-        smv_agent_wearables_update(sess, d)
+        -- smv_agent_wearables_update(sess, d)
+      elseif gid == "AssetUploadRequest" then
+        smv_asset_upload_request(sess, d)
+      elseif gid == "CreateInventoryItem" then
+        smv_create_inventory_item(sess, d)
+      elseif gid == "UpdateInventoryItem" then
+        -- FIXME!!!!
       elseif gid == "MoneyBalanceRequest" then
         smv_send_money_balance(sess, d)
       elseif gid == "LogoutRequest" then
