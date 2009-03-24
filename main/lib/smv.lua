@@ -4,12 +4,13 @@ require 'libpktsmv'
 require 'serialize'
 
 smv_state = {}
-smv_state.sessions = {}
-smv_state.sess_id_by_remote = {}
 smv_state.assets = {}
-smv_state.transactions = {}
 smv_state.inventory = {}
 require 'persistent_state'
+
+smv_state.transactions = {}
+smv_state.sessions = {}
+smv_state.sess_id_by_remote = {}
 
 zero_uuid = "00000000-0000-0000-0000-000000000000"
 
@@ -260,25 +261,35 @@ function smv_parcel_access_list_request(sess, d)
 end
 
 function smv_agent_wearables_update(sess, d)
-  print("Wearables update")
   local p = fmv.packet_new()
-  local AgentID, SessionID = fmv.Get_AgentWearablesRequest_AgentData(d)
+  local AgentID, SessionID
+  if d then
+    AgentID, SessionID = fmv.Get_AgentWearablesRequest_AgentData(d)
+  else 
+    AgentID, SessionID = sess.AgentID, sess.SessionID
+  end
   local inv = smv_state.inventory[AgentID]
   local total_wearables = 0
+  print("Wearables update for agent ", AgentID, SessionID)
   
   fmv.AgentWearablesUpdateHeader(p)
   fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 23456)
-  for uuid, item in pairs(inv) do
-    fmv.AgentWearablesUpdate_WearableDataBlock(p, total_wearables, 
-      uuid, -- ItemID
-      item.AssetID, -- AssetID
-      item.WearableType -- WearableType
-    )
-    print("Wearable#:", total_wearables, "uuid:", uuid, "asset:", item.AssetID) 
-    total_wearables = total_wearables + 1
+  if inv then
+    for uuid, item in pairs(inv) do
+      fmv.AgentWearablesUpdate_WearableDataBlock(p, total_wearables, 
+        uuid, -- ItemID
+        item.AssetID, -- AssetID
+        item.WearableType -- WearableType
+      )
+      print("Wearable#:", total_wearables, "uuid:", uuid, "asset:", item.AssetID) 
+      total_wearables = total_wearables + 1
+    end
+    fmv.AgentWearablesUpdate_WearableDataBlockSize(p, total_wearables)
+    smv_send_then_unlock(sess, p)
+  else
+    print("No wearables found")
+    su.dunlock(p)
   end
-  fmv.AgentWearablesUpdate_WearableDataBlockSize(p, total_wearables)
-  smv_send_then_unlock(sess, p)
 end
 
 function smv_transfer_request(sess, d)
@@ -289,17 +300,30 @@ function smv_transfer_request(sess, d)
   local item_id = fmv.uuid_from_bytes(Params)
   local item = smv_state.assets[item_id]
   print("Transfer req for id", item_id)
+  fmv.TransferInfoHeader(p)
   if item then
     print("Item found! length:", #(item.AssetData))
+    fmv.TransferInfo_TransferInfo(p, 
+      TransferID, ChannelType, 
+      0,  -- TargetType
+      0,  -- Status
+      #(item.AssetData), -- Size
+      Params)
+    smv_send_then_unlock(sess, p)
+    p = fmv.packet_new()
+
     fmv.TransferPacketHeader(p)
     fmv.TransferPacket_TransferData(p, TransferID, ChannelType, 
       0, -- Packet
       1, -- Status
       item.AssetData);
   else
-    fmv.TransferPacketHeader(p)
-    fmv.TransferPacket_TransferData(p, TransferID, ChannelType,
-      0, 1, "")
+    fmv.TransferInfo_TransferInfo(p, 
+      TransferID, ChannelType, 
+      0,  -- TargetType
+      1,  -- Status
+      0, -- Size
+      Params)
     print("Item not found")
     
   end
@@ -428,6 +452,7 @@ function smv_agent_update_received(sess, d)
 end
 
 function smv_asset_upload_request(sess, d)
+  -- local comment = [[
   local p = fmv.packet_new()
   local newasset = {}
   local uuid = fmv.uuid_create()
@@ -442,8 +467,9 @@ function smv_asset_upload_request(sess, d)
   newasset.StoreLocal = StoreLocal
   newasset.AssetData = AssetData
   fmv.AssetUploadCompleteHeader(p)
-  fmv.AssetUploadComplete_AssetBlock(p, TransactionID, Type, true)
+  fmv.AssetUploadComplete_AssetBlock(p, uuid, Type, 1)
   smv_send_then_unlock(sess, p)
+  -- ]]
 end
 
 function smv_inv_create_inventory_item(AgentID, FolderID, TransactionID, Type, InvType, WearableType, Name, Description)
@@ -466,6 +492,7 @@ function smv_inv_create_inventory_item(AgentID, FolderID, TransactionID, Type, I
 end
 
 function smv_create_inventory_item(sess, d)
+  -- local comment = [[
   local p = fmv.packet_new()
   local AgentID, SessionID = fmv.Get_CreateInventoryItem_AgentData(d)
   local CallbackID, FolderID, TransactionID, NextOwnerMask, Type, InvType, 
@@ -476,13 +503,18 @@ function smv_create_inventory_item(sess, d)
   local Flags = 0
 
   print("TransactionID for create inventory item:", TransactionID)
+  print("FolderID", FolderID)
+  print("CallbackID", CallbackID)
+  if FolderID == "00000000-0000-0000-0000-000000000000" then
+    FolderID = "9846e02a-f41b-4199-7777-000000000001"
+  end
   local ItemID, AssetID = smv_inv_create_inventory_item(AgentID, FolderID, 
                         TransactionID, Type, InvType, WearableType, Name, Description)
 
 
   fmv.UpdateCreateInventoryItemHeader(p)
   fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
-      1, -- SimApproved
+      true, -- SimApproved
       TransactionID -- TransactionID
     )
   fmv.UpdateCreateInventoryItem_InventoryDataBlockSize(p,1)
@@ -511,6 +543,32 @@ function smv_create_inventory_item(sess, d)
       0 -- CRC
     )
   smv_send_then_unlock(sess, p)
+  -- ]]
+end
+
+function smv_create_inventory_folder(sess, d)
+  -- local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_CreateInventoryFolder_AgentData(d)
+  local FolderID, ParentID, Type, Name = fmv.Get_CreateInventoryFolder_FolderData(d)
+  print("Create folder of type ", Type, " parent ", ParentID, " name: ", Name)
+
+end
+
+function smv_agent_cached_texture(sess, d)
+  local p = fmv.packet_new()
+  local AgentID, SessionID, SerialNum = fmv.Get_AgentCachedTexture_AgentData(d)
+  local sz = fmv.Get_AgentCachedTexture_WearableDataBlockSize(d)
+  fmv.AgentCachedTextureResponseHeader(p)
+  fmv.AgentCachedTextureResponse_AgentData(p, AgentID, SessionID, SerialNum)
+  fmv.AgentCachedTextureResponse_WearableDataBlockSize(p, sz)
+  for i=0,sz-1 do
+    local ID, TextureIndex = fmv.Get_AgentCachedTexture_WearableDataBlock(d, i)
+    fmv.AgentCachedTextureResponse_WearableDataBlock(p, i,
+       zero_uuid, -- TextureID
+       TextureIndex, -- TextureIndex
+       "") -- Hostname
+  end
+  smv_send_then_unlock(sess, p)
 end
 
 
@@ -524,6 +582,7 @@ function smv_packet(idx, d)
     print("Circuit code: " .. tostring(circuit_code))
     print("session_id: " .. session_id)
     print("user_id: " .. user_id)
+    print("smv_state:", smv_state)
     if(smv_state.sessions[session_id]) then
       print("Duplicate usecircuitcode!\n")
     else
@@ -579,10 +638,14 @@ function smv_packet(idx, d)
         smv_asset_upload_request(sess, d)
       elseif gid == "CreateInventoryItem" then
         smv_create_inventory_item(sess, d)
+      elseif gid == "CreateInventoryFolder" then
+        smv_create_inventory_folder(sess, d)
       elseif gid == "UpdateInventoryItem" then
         -- FIXME!!!!
       elseif gid == "TransferRequest" then
         smv_transfer_request(sess, d)
+      elseif gid == "AgentCachedTexture" then
+	smv_agent_cached_texture(sess, d)
       elseif gid == "MoneyBalanceRequest" then
         smv_send_money_balance(sess, d)
       elseif gid == "LogoutRequest" then
