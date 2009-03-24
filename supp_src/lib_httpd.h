@@ -41,6 +41,8 @@ appdata_http_t *http_dbuf_get_appdata(dbuf_t *d);
 int ev_http_read(int idx, dbuf_t * d, void *u_ptr);
 int ev_http_connect_read(int idx, dbuf_t * d, void *u_ptr);
 
+void httpd_register_handlers(void);
+
 /* the one that is exported */
 int http_start_listener(char *addr, int port, http_dispatcher_func_t dispatcher);
 

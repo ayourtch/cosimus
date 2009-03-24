@@ -34,6 +34,7 @@ function main(start)
     local smv_ser = libreload.parent_run("get_runtime_state", "smv_lua_state", nil)
     deserialize(smv_ser)
     print "deserialized\n"
+    smv.register_handlers()
   end
   keep_running = true
   retcode = "restart"
@@ -42,7 +43,7 @@ function main(start)
   watch_file(cpath .. "libfmv.so")
   watch_file(cpath .. "libpktsmv.so")
   watch_file(cpath .. "libsupp.so")
-  su.set_debug_level(1000, 10);
+  -- su.set_debug_level(1000, 10);
 
   while(keep_running) do
     -- print("Running some cycles")
@@ -60,3 +61,4 @@ function main(start)
   return retcode
 end
 
+print "In child eval"

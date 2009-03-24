@@ -378,8 +378,6 @@ static int smv_packet(int idx, dbuf_t *d0, void *ptr) {
   dbuf_t *d;
   lua_State *L = ptr;
 
-  printf("Received packet\n");
-
   d = MaybeZeroDecodePacket(d0);
   lua_getglobal(L, "smv_packet");
   lua_pushnumber(L, idx);
@@ -405,18 +403,24 @@ lua_fn_start_listener(lua_State *L) {
 
   idx = bind_udp_listener_specific((void*)addr, port, NULL);
   h = cdata_get_handlers(idx);
-  h->ev_read = smv_packet;
+  h->ev_read = register_socket_handler("smv_packet", smv_packet);
   return idx;
+}
+
+static int 
+lua_fn_register_handlers(lua_State *L) {
+  register_socket_handler("smv_packet", smv_packet);
+  return 0;
 }
 
 static const luaL_reg smvlib[] = {
   { "start_listener", lua_fn_start_listener },
+  { "register_handlers", lua_fn_register_handlers },
   { "SendLayerData", lua_fn_SendLayerData },
   { NULL, NULL }
 };
 
 LUA_API int luaopen_libpktsmv (lua_State *L) {
-  printf("Address of event handler: %x\n", (unsigned int)smv_packet);
   luaL_openlib(L, "smv", smvlib, 0);
   return 1;
 }

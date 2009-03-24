@@ -344,7 +344,7 @@ function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
   local remote_str = remote_addr .. ':' .. tostring(remote_port)
-  print("Got packet")
+  -- print("Got packet: ", gid)
   if gid == "UseCircuitCode" then
     local circuit_code, session_id, user_id = fmv.Get_UseCircuitCode_CircuitCode(d)
     print("Circuit code: " .. tostring(circuit_code))

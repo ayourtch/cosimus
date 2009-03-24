@@ -55,10 +55,10 @@ typedef int (*sock_ev_closed_t)(int idx, void *u_ptr);
 typedef int (*sock_ev_newconn_t)(int idx, int parent, void *u_ptr);
 
 typedef struct sock_handlers_t_tag {
-  sock_ev_channel_ready_t ev_channel_ready;
-  sock_ev_read_t ev_read;
-  sock_ev_closed_t ev_closed;
-  sock_ev_newconn_t ev_newconn;
+  int ev_channel_ready;
+  int ev_read;
+  int ev_closed;
+  int ev_newconn;
 } sock_handlers_t;
 
 void print_socks(void);
@@ -90,6 +90,9 @@ int bind_udp_listener_specific(char *addr, int port, char *remote);
 void pkt_dprint_cdata_all(dbuf_t * d);
 
 void *libsock_init(void *data);
+
+int register_socket_handler(char *name, void *ptr);
+
 
 
 #endif
