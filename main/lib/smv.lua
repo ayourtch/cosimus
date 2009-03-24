@@ -276,13 +276,15 @@ function smv_agent_wearables_update(sess, d)
   fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 23456)
   if inv then
     for uuid, item in pairs(inv) do
-      fmv.AgentWearablesUpdate_WearableDataBlock(p, total_wearables, 
-        uuid, -- ItemID
-        item.AssetID, -- AssetID
-        item.WearableType -- WearableType
-      )
-      print("Wearable#:", total_wearables, "uuid:", uuid, "asset:", item.AssetID) 
-      total_wearables = total_wearables + 1
+      if item.IsWorn then
+        fmv.AgentWearablesUpdate_WearableDataBlock(p, total_wearables, 
+          uuid, -- ItemID
+          item.AssetID, -- AssetID
+          item.WearableType -- WearableType
+        )
+        print("Wearable#:", total_wearables, "uuid:", uuid, "asset:", item.AssetID) 
+        total_wearables = total_wearables + 1
+      end
     end
     fmv.AgentWearablesUpdate_WearableDataBlockSize(p, total_wearables)
     smv_send_then_unlock(sess, p)
@@ -480,6 +482,7 @@ function smv_inv_create_inventory_item(AgentID, FolderID, TransactionID, Type, I
     smv_state.inventory[AgentID] = inv
   end
   local item = {}
+  print("smv_inv_create_inventory_item: ", TransactionID)
   inv[ItemID] = item
   item.AssetID = smv_state.transactions[TransactionID].AssetID
   item.Type = Type
@@ -498,9 +501,9 @@ function smv_create_inventory_item(sess, d)
   local CallbackID, FolderID, TransactionID, NextOwnerMask, Type, InvType, 
         WearableType, Name, Description = fmv.Get_CreateInventoryItem_InventoryBlock(d)
 
-  local ItemID = fmv.uuid_create();
-  local BaseMask = NextOwnerMask;
-  local Flags = 0
+  local ItemID = fmv.uuid_create()
+  local BaseMask = 0x3fffffff -- NextOwnerMask
+  local Flags = 0x3fffffff
 
   print("TransactionID for create inventory item:", TransactionID)
   print("FolderID", FolderID)
@@ -510,7 +513,6 @@ function smv_create_inventory_item(sess, d)
   end
   local ItemID, AssetID = smv_inv_create_inventory_item(AgentID, FolderID, 
                         TransactionID, Type, InvType, WearableType, Name, Description)
-
 
   fmv.UpdateCreateInventoryItemHeader(p)
   fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
@@ -551,7 +553,71 @@ function smv_create_inventory_folder(sess, d)
   local AgentID, SessionID = fmv.Get_CreateInventoryFolder_AgentData(d)
   local FolderID, ParentID, Type, Name = fmv.Get_CreateInventoryFolder_FolderData(d)
   print("Create folder of type ", Type, " parent ", ParentID, " name: ", Name)
+end
 
+function smv_fetch_inventory_descendents(sess, d)
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_FetchInventoryDescendents_AgentData(d)
+  local FolderID, OwnerID, SortOrder, FetchFolders, FetchItems =
+                   fmv.Get_FetchInventoryDescendents_InventoryData(d)
+  local inv = smv_state.inventory[AgentID]
+  local total_folder_descendents = 0
+  local total_item_descendents = 0
+
+  fmv.InventoryDescendentsHeader(p)
+  -- folder descendents will go here
+  if inv then
+    for item_id, item in pairs(inv) do
+      if item.IsFolder then
+        fmv.InventoryDescendents_FolderDataBlock(p, total_folder_descendents,
+	  item_id, -- FolderID
+	  item.FolderID, -- PArentID
+	  item.Type, -- Type
+	  item.Name) -- Name
+	total_folder_descendents = total_folder_descendents + 1
+      end
+    end
+  end
+  fmv.InventoryDescendents_FolderDataBlockSize(p, total_folder_descendents)
+  print("Total Folder Descendents:", total_folder_descendents)
+
+
+  if inv then
+    for item_id, item in pairs(inv) do
+      if not item.IsFolder then
+        fmv.InventoryDescendents_ItemDataBlock(p, total_item_descendents, 
+          item_id, -- ItemID
+  	  item.FolderID, -- FolderID
+	  AgentID, -- CreatorID
+	  AgentID, -- OwnerID
+	  zero_uuid, -- GroupID
+	  0x3fffffff, -- BaseMask
+	  0x3fffffff, -- OwnerMask
+	  0x3fffffff, -- GroupMask
+	  0x3fffffff, -- EveryoneMask
+	  0x3fffffff, -- NextOwnerMask
+	  false, -- GroupOwned
+	  item.AssetID, -- AssetID
+	  item.Type, -- Type
+	  item.InvType, -- InvType
+	  0x3fffffff, -- Flags
+	  0, -- SaleType
+	  0, -- SalePrice
+	  item.Name, -- Name
+	  item.Description, -- Description
+	  0, -- CreationDate
+	  0) -- CRC
+        total_item_descendents = total_item_descendents + 1
+      end
+    end
+  end
+  fmv.InventoryDescendents_ItemDataBlockSize(p, total_item_descendents)
+  fmv.InventoryDescendents_AgentData(p, AgentID, FolderID, OwnerID, 
+      0, -- Version
+      total_folder_descendents + total_item_descendents) -- Descendents
+  
+  print("Total Item Descendents:", total_item_descendents)
+  smv_send_then_unlock(sess, p)
 end
 
 function smv_agent_cached_texture(sess, d)
@@ -642,6 +708,8 @@ function smv_packet(idx, d)
         smv_create_inventory_folder(sess, d)
       elseif gid == "UpdateInventoryItem" then
         -- FIXME!!!!
+      elseif gid == "FetchInventoryDescendents" then
+        smv_fetch_inventory_descendents(sess, d)
       elseif gid == "TransferRequest" then
         smv_transfer_request(sess, d)
       elseif gid == "AgentCachedTexture" then
