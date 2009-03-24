@@ -278,9 +278,12 @@ char *UUIDFromU64(u64t value)
     return UUIDFromBytes(0,0,0,(u8t *) &value);
 }
 
-void LLUUID_UDP(uuid_t uu, u8t* data, int *i)
+int LLUUID_UDP(uuid_t uu, u8t* data, int *i, int datasz)
 {
     int tmp;
+    if (*i + 16 >= datasz) {
+      return -1;
+    }
 
     tmp = uu.time_low; 
     data[*i+3] = (u8t) tmp;
@@ -302,17 +305,18 @@ void LLUUID_UDP(uuid_t uu, u8t* data, int *i)
     memcpy(&data[*i+10], uu.node, 6);
 
     *i+=16;
+    return 0;
 }
 
-void LLUUIDS_UDP(const char* uuid_string, u8t* data, int *i)
+void LLUUIDS_UDP(const char* uuid_string, u8t* data, int *i, int datasz)
 {
     uuid_t uu;
 
     UUIDFromString(uuid_string, &uu);
-    LLUUID_UDP(uu, data, i);
+    LLUUID_UDP(uu, data, i, datasz);
 }
 
-void UDP_LLUUID(uuid_t *uu, u8t* data, int *i)
+void UDP_LLUUID(uuid_t *uu, u8t* data, int *i, int datasz)
 {
     int tmp = data[*i];
     tmp = (tmp << 8) | data[*i+1];
@@ -333,16 +337,19 @@ void UDP_LLUUID(uuid_t *uu, u8t* data, int *i)
     *i+=16;
 }
 
-void UDP_LLUUIDS(char* uuid_string, u8t* data, int *i)
+void UDP_LLUUIDS(char* uuid_string, u8t* data, int *i, int datasz)
 {
     uuid_t uu;
-    UDP_LLUUID(&uu, data, i);
+    UDP_LLUUID(&uu, data, i, datasz);
     UUIDToString(uuid_string, &uu);
 }
 
 /* Variable values are always passed as a pair (ptr, length). */
-void Variable2_UDP(const char *val, int length, u8t* data, int *i)
+int Variable2_UDP(const char *val, int length, u8t* data, int *i, int datasz)
 {
+    if(*i + length + 2 >= datasz) {
+      return -1;
+    }
     if (length >= 0 && length <= 65535) {
       data[*i + 0] = (u8t) (length % 256);
       data[*i + 1] = (u8t) (length / 256);
@@ -350,12 +357,13 @@ void Variable2_UDP(const char *val, int length, u8t* data, int *i)
       memcpy(&data[*i], val, length);
       *i+=length;
     } else {
-      assert("Length of Variable2 is illegal");
+      assert(0 == "Length of Variable2 is illegal");
     }
+    return 0;
 }
 
 /* return the length, and make the value also a C string, just in case */
-int UDP_Variable2(char *val, int maxlen, u8t* data, int *i)
+int UDP_Variable2(char *val, int maxlen, u8t* data, int *i, int datasz)
 {
     int length = (int) (data[*i + 0] + data[*i + 1] * 256);
     int copylength = length;
@@ -371,19 +379,23 @@ int UDP_Variable2(char *val, int maxlen, u8t* data, int *i)
     return length;
 }
 /* Variable values are passed always as (ptr, length) pair */
-void Variable1_UDP(const char *val, int length, u8t* data, int *i)
+int Variable1_UDP(const char *val, int length, u8t* data, int *i, int datasz)
 {
+    if(*i + length + 1 >= datasz) {
+      return -1;
+    }
     if (length >= 0 && length <= 255) {
       data[*i] = (u8t) length;
       *i+=1;
       memcpy(&data[*i], val, length);
       *i+=length;
     } else {
-      assert("Length of the Variable1 is illegal");
+      assert(0 == "Length of the Variable1 is illegal");
     }
+    return 0;
 }
 /* return length of data only, not advancing in case val is NULL */
-int UDP_Variable1(char *val, int maxlen, u8t* data, int *i)
+int UDP_Variable1(char *val, int maxlen, u8t* data, int *i, int datasz)
 {
     int length = (int) data[*i];
     int copylength = length;
@@ -399,9 +411,10 @@ int UDP_Variable1(char *val, int maxlen, u8t* data, int *i)
     return length;
 }
 
-void LLQuaternion_UDP(f32t x, f32t y, f32t z, f32t w, u8t* data, int *i)
+int LLQuaternion_UDP(f32t x, f32t y, f32t z, f32t w, u8t* data, int *i, int datasz)
 {
     f32t fx, fy, fz;
+    int out = 0;
     f32t norm = (f32t) sqrt(x * x + y * y + z * z + w * w);
     if (norm == 0) { 
       printf("Error: Quaternion normalized to zero"); 
@@ -419,106 +432,129 @@ void LLQuaternion_UDP(f32t x, f32t y, f32t z, f32t w, u8t* data, int *i)
         fz = -z;
     }
 
-    F32_UDP(norm * fx, data, i);
-    F32_UDP(norm * fy, data, i);
-    F32_UDP(norm * fz, data, i);
+    out = out || F32_UDP(norm * fx, data, i, datasz);
+    out = out || F32_UDP(norm * fy, data, i, datasz);
+    out = out || F32_UDP(norm * fz, data, i, datasz);
+    return out;
 }
 
-void UDP_LLQuaternion(f32t* x, f32t* y, f32t* z, f32t* w, u8t* data, int *i)
+void UDP_LLQuaternion(f32t* x, f32t* y, f32t* z, f32t* w, u8t* data, int *i, int datasz)
 {
     f32t xyzsum;
 
-    UDP_F32(x, data, i);
-    UDP_F32(y, data, i);
-    UDP_F32(z, data, i);
+    UDP_F32(x, data, i, datasz);
+    UDP_F32(y, data, i, datasz);
+    UDP_F32(z, data, i, datasz);
 
     xyzsum = 1 - (*x)*(*x)- (*y)*(*y)- (*z)*(*z);
     if(w!=NULL) *w = (xyzsum > 0) ? (f32t) sqrt(xyzsum) : 0;
 }
 
-void LLVector3_UDP(f32t x, f32t y, f32t z, u8t* data, int *i)
+int LLVector3_UDP(f32t x, f32t y, f32t z, u8t* data, int *i, int datasz)
 {
-    F32_UDP(x, data, i);
-    F32_UDP(y, data, i);
-    F32_UDP(z, data, i);
+    int out = 0;
+    out = out || F32_UDP(x, data, i, datasz);
+    out = out || F32_UDP(y, data, i, datasz);
+    out = out || F32_UDP(z, data, i, datasz);
+    return out;
 }
 
-void UDP_LLVector3(f32t* x, f32t* y, f32t* z, u8t* data, int *i)
+void UDP_LLVector3(f32t* x, f32t* y, f32t* z, u8t* data, int *i, int datasz)
 {
-    UDP_F32(x, data, i);
-    UDP_F32(y, data, i);
-    UDP_F32(z, data, i);
+    UDP_F32(x, data, i, datasz);
+    UDP_F32(y, data, i, datasz);
+    UDP_F32(z, data, i, datasz);
 }
 
-void LLVector4_UDP(f32t x, f32t y, f32t z, f32t s, u8t* data, int *i)
+int LLVector4_UDP(f32t x, f32t y, f32t z, f32t s, u8t* data, int *i, int datasz)
 {
-    F32_UDP(x, data, i);
-    F32_UDP(y, data, i);
-    F32_UDP(z, data, i);
-    F32_UDP(s, data, i);
+    int out = 0;
+    out = out || F32_UDP(x, data, i, datasz);
+    out = out || F32_UDP(y, data, i, datasz);
+    out = out || F32_UDP(z, data, i, datasz);
+    out = out || F32_UDP(s, data, i, datasz);
+    return out;
 }
 
-void UDP_LLVector4(f32t* x, f32t* y, f32t* z, f32t* s, u8t* data, int *i)
+void UDP_LLVector4(f32t* x, f32t* y, f32t* z, f32t* s, u8t* data, int *i, int datasz)
 {
-    UDP_F32(x, data, i);
-    UDP_F32(y, data, i);
-    UDP_F32(z, data, i);
-    UDP_F32(s, data, i);
+    UDP_F32(x, data, i, datasz);
+    UDP_F32(y, data, i, datasz);
+    UDP_F32(z, data, i, datasz);
+    UDP_F32(s, data, i, datasz);
 }
 
-void LLVector3d_UDP(f64t x, f64t y, f64t z, u8t* data, int *i)
+int LLVector3d_UDP(f64t x, f64t y, f64t z, u8t* data, int *i, int datasz)
 {
-    F64_UDP(x, data, i);
-    F64_UDP(y, data, i);
-    F64_UDP(z, data, i);
+    int out = 0;
+    out = out || F64_UDP(x, data, i, datasz);
+    out = out || F64_UDP(y, data, i, datasz);
+    out = out || F64_UDP(z, data, i, datasz);
+    return out;
 }
 
-void UDP_LLVector3d(f64t* x, f64t* y, f64t* z, u8t* data, int *i)
+void UDP_LLVector3d(f64t* x, f64t* y, f64t* z, u8t* data, int *i, int datasz)
 {
-    UDP_F64(x, data, i);
-    UDP_F64(y, data, i);
-    UDP_F64(z, data, i);
+    UDP_F64(x, data, i, datasz);
+    UDP_F64(y, data, i, datasz);
+    UDP_F64(z, data, i, datasz);
 }
 
-void Bool_UDP(int val, u8t* data, int *i)
+int Bool_UDP(int val, u8t* data, int *i, int datasz)
 {
-    data[*i + 0] = (u8t) ((val) ? 1 : 0);
-    *i+=1;
+    if(*i < datasz) {
+      data[*i + 0] = (u8t) ((val) ? 1 : 0);
+      *i+=1;
+      return 0;
+    } else {
+      return -1;
+    }
 }
 
-void UDP_Bool(int* val, u8t* data, int *i)
+void UDP_Bool(int* val, u8t* data, int *i, int datasz)
 {
     if(val!=NULL) *val = (data[*i] != 0) ? (int) 1 : (int) 0;
     *i+=1;
 }
 
-void Fixed_UDP(const u8t *val, int size, u8t* data, int *i)
+int Fixed_UDP(const u8t *val, int size, u8t* data, int *i, int datasz)
 {
-    memcpy(&data[*i], val, size);
-    *i+=size;
+    if(*i + size < datasz) {
+      memcpy(&data[*i], val, size);
+      *i+=size;
+      return 0;
+    } else {
+      return -1;
+    }
 }
 
-void UDP_Fixed(u8t *val, int size, u8t* data, int *i)
+void UDP_Fixed(u8t *val, int size, u8t* data, int *i, int datasz)
 {
     if(val!=NULL) memcpy(val, &data[*i], size);
     *i+=size;
 }
 
-void S16_UDP(short val, u8t* data, int *i)
+int S16_UDP(short val, u8t* data, int *i, int datasz)
 {
+  if(*i + 2 < datasz) {
     data[*i + 0] = (u8t) (val % 256);
     data[*i + 1] = (u8t) ((val >> 8) % 256);
     *i+=2;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
-void UDP_S16(short* val, u8t* data, int *i)
+void UDP_S16(short* val, u8t* data, int *i, int datasz)
 {
     if(val!=NULL) *val = (short) (data[*i + 0] + (data[*i + 1] << 8));
     *i+=2;
 }
 
-void U64_UDP(u64t val, u8t* data, int *i)
+int U64_UDP(u64t val, u8t* data, int *i, int datasz)
 {
+  if(*i + 8 < datasz) {
     data[*i + 0] = (u8t) (val % 256);
     data[*i + 1] = (u8t) ((val >> 8) % 256);
     data[*i + 2] = (u8t) ((val >> 16) % 256);
@@ -528,9 +564,13 @@ void U64_UDP(u64t val, u8t* data, int *i)
     data[*i + 6] = (u8t) ((val >> 48) % 256);
     data[*i + 7] = (u8t) ((val >> 56) % 256);
     *i+=8;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
-void UDP_U64(u64t* val, u8t* data, int *i)
+void UDP_U64(u64t* val, u8t* data, int *i, int datasz)
 {
     if(val!=NULL) *val = (u64t)
         ((u64t) data[*i + 0] + ((u64t) data[*i + 1] << 8) +
@@ -540,9 +580,12 @@ void UDP_U64(u64t* val, u8t* data, int *i)
     *i+=8;
 }
 
-void F32_UDP(f32t val, u8t* data, int *i)
+int F32_UDP(f32t val, u8t* data, int *i, int datasz)
 {
     u8t *v=(u8t *) &val;
+    if (*i + 4 >= datasz) {
+      return -1;
+    }
 
     if (is_bigendian()) {
         data[*i + 3]=v[0];
@@ -557,9 +600,10 @@ void F32_UDP(f32t val, u8t* data, int *i)
     }
 
     *i+=4;
+    return 0;
 }
 
-void UDP_F32(f32t* val, u8t* data, int *i)
+void UDP_F32(f32t* val, u8t* data, int *i, int datasz)
 {
     u8t *v=(u8t *) val;
 
@@ -580,10 +624,10 @@ void UDP_F32(f32t* val, u8t* data, int *i)
     *i+=4;
 }
 
-void F64_UDP(f64t val, u8t* data, int *i)
+int F64_UDP(f64t val, u8t* data, int *i, int datasz)
 {
-    u8t *v=(u8t *) &val;
-
+  u8t *v=(u8t *) &val;
+  if(*i + 8 < datasz) {
     if (is_bigendian()) {
         data[*i + 7]=v[0];
         data[*i + 6]=v[1];
@@ -605,9 +649,13 @@ void F64_UDP(f64t val, u8t* data, int *i)
     }
 
     *i+=8;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
-void UDP_F64(f64t* val, u8t* data, int *i)
+void UDP_F64(f64t* val, u8t* data, int *i, int datasz)
 {
     u8t *v=(u8t *) val;
 
@@ -636,16 +684,21 @@ void UDP_F64(f64t* val, u8t* data, int *i)
     *i+=8;
 }
 
-void U32_UDP(u32t val, u8t* data, int *i)
+int U32_UDP(u32t val, u8t* data, int *i, int datasz)
 {
+  if (*i + 4 < datasz) {
     data[*i + 0] = (u8t) (val % 256);
     data[*i + 1] = (u8t) ((val >> 8) % 256);
     data[*i + 2] = (u8t) ((val >> 16) % 256);
     data[*i + 3] = (u8t) ((val >> 24) % 256);
     *i+=4;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
-void UDP_U32(u32t *val, u8t* data, int *i)
+void UDP_U32(u32t *val, u8t* data, int *i, int datasz)
 {
     if(val!=NULL) *val = (u32t)
         (data[*i + 0] + (data[*i + 1] << 8) + 
@@ -653,16 +706,21 @@ void UDP_U32(u32t *val, u8t* data, int *i)
     *i+=4;
 }
 
-void S32_UDP(s32t val, u8t* data, int *i)
+int S32_UDP(s32t val, u8t* data, int *i, int datasz)
 {
+  if(*i + 4 < datasz) {
     data[*i + 0] = (u8t) (val % 256);
     data[*i + 1] = (u8t) ((val >> 8) % 256);
     data[*i + 2] = (u8t) ((val >> 16) % 256);
     data[*i + 3] = (u8t) ((val >> 24) % 256);
     *i+=4;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
-void UDP_S32(s32t* val, u8t* data, int *i)
+void UDP_S32(s32t* val, u8t* data, int *i, int datasz)
 {
     if(val!=NULL) *val = (s32t)
         (data[*i + 0] + (data[*i + 1] << 8) +
@@ -670,74 +728,94 @@ void UDP_S32(s32t* val, u8t* data, int *i)
     *i+=4;
 }
 
-void U16_UDP(u16t val, u8t* data, int *i)
+int U16_UDP(u16t val, u8t* data, int *i, int datasz)
 {
+  if(*i + 2 < datasz) {
     data[*i + 0] = (u8t) (val % 256);
     data[*i + 1] = (u8t) ((val >> 8) % 256);
     *i+=2;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
-void UDP_U16(u16t* val, u8t* data, int *i)
+void UDP_U16(u16t* val, u8t* data, int *i, int datasz)
 {
     if(val!=NULL) *val = (u16t) (data[*i + 0] + (data[*i + 1] << 8));
     *i+=2;
 }
 
-void IPPORT_UDP(u16t val, u8t* data, int* i) {
+int IPPORT_UDP(u16t val, u8t* data, int* i, int datasz) {
+  if(*i + 2 < datasz) {
     data[*i + 0] = (u8t)((val >> 8) % 256);
     data[*i + 1] = (u8t)(val % 256);
     *i+=2;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
-void UDP_IPPORT(u16t* val, u8t* data, int* i) {
+void UDP_IPPORT(u16t* val, u8t* data, int* i, int datasz) {
     if(val!=NULL) *val = (u16t)((data[*i + 0] << 8) + data[*i + 1]);
     *i+=2;
 }
 
-void IPADDR_UDP(u32t val, u8t* data, int *i)
+int IPADDR_UDP(u32t val, u8t* data, int *i, int datasz)
 {
-  U32_UDP(val, data, i);
+  return U32_UDP(val, data, i, datasz);
 }
 
-void UDP_IPADDR(u32t *val, u8t* data, int *i)
+void UDP_IPADDR(u32t *val, u8t* data, int *i, int datasz)
 {
-  UDP_U32(val, data, i);
+  UDP_U32(val, data, i, datasz);
 }
 
 
-void U8_UDP(u8t val, u8t* data, int *i)
+int U8_UDP(u8t val, u8t* data, int *i, int datasz)
 {
+  if(*i < datasz) {
     data[*i] = val;
     *i+=1;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
-void UDP_U8(u8t* val, u8t* data, int *i)
+void UDP_U8(u8t* val, u8t* data, int *i, int datasz)
 {
     if(val!=NULL) *val = data[*i];
     *i+=1;
 }
 
-void S8_UDP(s8t val, u8t* data, int *i)
+int S8_UDP(s8t val, u8t* data, int *i, int datasz)
 {
+  if(*i < datasz) {
     data[*i] = (u8t) val;
     *i+=1;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
-void UDP_S8(s8t* val, u8t* data, int *i)
+void UDP_S8(s8t* val, u8t* data, int *i, int datasz)
 {
     if(val!=NULL) *val = (s8t) data[*i];
     *i+=1;
 }
 
-void BOOL_UDP(int val, u8t* data, int *i)
+int BOOL_UDP(int val, u8t* data, int *i, int datasz)
 {
-  U8_UDP(val == 1, data, i);
+  return U8_UDP(val == 1, data, i, datasz);
 }
 
-void UDP_BOOL(int* val, u8t* data, int *i)
+void UDP_BOOL(int* val, u8t* data, int *i, int datasz)
 {
   u8t b;
-  UDP_U8(&b, data, i);
+  UDP_U8(&b, data, i, datasz);
   *val = b;
 }
 

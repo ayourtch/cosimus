@@ -559,7 +559,7 @@ function FieldTypeName(field)
 end
 
 function CodeFieldToUdp(otab, field)
-  otab.p("  " .. FieldTypeName(field) .. "_UDP(" .. CodeFieldStr(field) .. ", d->buf, &n);\n")
+  otab.p("  " .. FieldTypeName(field) .. "_UDP(" .. CodeFieldStr(field) .. ", d->buf, &n, d->size);\n")
 end
 
 function LuaCodeFieldDeclare(otab, field)
@@ -569,13 +569,15 @@ function LuaCodeFieldToUdp(otab, field)
   otab.p("  {\n")
   otab.p("    " .. LuaDefineFieldStr(field) .. ";\n")
   otab.p("    " .. LuaPopFieldStr(field) .. "\n")
-  otab.p("    " .. FieldTypeName(field) .. "_UDP(" .. CodeFieldStr(field) .. ", d->buf, &n);\n")
+  otab.p("    if(" .. FieldTypeName(field) .. "_UDP(" .. CodeFieldStr(field) .. ", d->buf, &n, d->size)) {\n")
+  otab.p('      luaL_error(L, "' .. field.name .. ' does not fit into %d with offset %d", d->size, n);\n')
+  otab.p('    }\n')
   otab.p("  }\n")
 end
 
 function CodeFieldFromUdp(otab, field)
   local ftype = field.type
-  otab.p("  UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field) .. ", d->buf, &n);\n")
+  otab.p("  UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field) .. ", d->buf, &n, d->dsize);\n")
 end
 
 function LuaCodeFieldFromUdp(otab, field)
@@ -597,9 +599,9 @@ function LuaCodeFieldFromUdp(otab, field)
     otab.p('    }\n')
   end
   if IsArrayField(field) and ArrayFieldKind(field) > 0 then
-    otab.p("    " .. ArrayFieldLengthName(field) .. " = UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n);\n")
+    otab.p("    " .. ArrayFieldLengthName(field) .. " = UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n, d->dsize);\n")
   else
-    otab.p("    UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n);\n")
+    otab.p("    UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n, d->dsize);\n")
   end
   otab.p("    " .. LuaPushFieldStr(field) .. "\n")
   if IsArrayField(field) then
