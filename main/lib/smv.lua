@@ -287,6 +287,24 @@ function smv_parcel_access_list_request(sess, d)
   smv_send_then_unlock(sess, p)
 end
 
+function smv_agent_wearables_update(sess, d)
+  print("Wearables update")
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_AgentWearablesRequest_AgentData(d)
+  
+  fmv.AgentWearablesUpdateHeader(p)
+  fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 23456)
+  fmv.AgentWearablesUpdate_WearableDataBlockSize(p, 15)
+  for i=0, 14 do
+    fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
+      zero_uuid, -- ItemID
+      zero_uuid, -- AssetID
+      i -- WearableType
+    )
+  end
+  smv_send_then_unlock(sess, p)
+end
+
 function smv_uuid_name_request(sess, d)
   local p = fmv.packet_new()
   local bs = fmv.Get_UUIDNameRequest_UUIDNameBlockBlockSize(d)
@@ -466,6 +484,8 @@ function smv_packet(idx, d)
         -- frequent agent updates go here
       elseif gid == "AgentHeightWidth" then
         smv_agent_width_height(sess, d)
+      elseif gid == "AgentWearablesRequest" then
+        smv_agent_wearables_update(sess, d)
       elseif gid == "MoneyBalanceRequest" then
         smv_send_money_balance(sess, d)
       elseif gid == "LogoutRequest" then
