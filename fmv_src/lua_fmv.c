@@ -168,7 +168,15 @@ lua_fn_IsReliable(lua_State *L) {
   return 1;
 }
 
-
+static int 
+lua_fn_F32_UDP(lua_State *L) {
+  float f = luaL_checknumber(L, 1);
+  int offs = 0;
+  u8t bytes[4];
+  F32_UDP(f, bytes, &offs);
+  lua_pushlstring(L, bytes, 4);
+  return 1;
+}
 
 const luaL_reg fmv_sta_lib[] = {
   { "packet_new", lua_fn_packet_new },
@@ -180,6 +188,7 @@ const luaL_reg fmv_sta_lib[] = {
   { "MaybeZeroDecodePacket", lua_fn_MaybeZeroDecodePacket },
   { "GetRegionHandle", lua_fn_GetRegionHandle },
   { "IsReliable", lua_fn_IsReliable },
+  { "F32_UDP", lua_fn_F32_UDP }, 
   { NULL, NULL }
 };
 

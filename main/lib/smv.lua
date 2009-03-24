@@ -276,9 +276,12 @@ function smv_agent_data_update(sess, d)
   smv_send_then_unlock(sess, p)
 end
 
-function smv_create_avatar_data(sess, p)
+function smv_create_avatar_data(sess, p, xPos, yPos, zPos)
   -- magic objectdata values.
-  local objectdata = string.rep("\0", 15) .. string.char(128, 63) .. string.rep("\0", 39) .. 
+  local objectdata = string.rep("\0", 15) .. string.char(128) .. 
+                     fmv.F32_UDP(xPos+0.01) .. fmv.F32_UDP(yPos) .. fmv.F32_UDP(zPos) ..
+                     -- string.rep("\0", 39) .. 
+                     string.rep("\0", 28) .. 
                      string.char(128) .. string.rep("\0", 4) .. string.char(102, 140, 61, 189) ..
 		     string.rep("\0", 11)
   print("Avatar data length:", #objectdata)
@@ -312,7 +315,7 @@ function smv_create_avatar_data(sess, p)
     "FirstName STRING RW SV Test User\nLastName STRING RW SV | example.com\0", --NameValue
     "", -- Data
     "TestText", -- Text
-    "\0\0\0\0", -- TextColor
+    "\0\255\0\0", -- TextColor
     "\0", -- MediaURL
     "", -- PSBlock
     "", -- ExtraParams
@@ -322,7 +325,7 @@ function smv_create_avatar_data(sess, p)
     0, -- Flags
     0, -- Radius
     0, -- JointType
-    0.0, 0.0, 0.0, -- JointPivot
+    10.0, 0.0, 0.0, -- JointPivot
     0.0, 0.0, 0.0 -- JointAxisOrAnchor
   )
 end
@@ -333,7 +336,7 @@ function smv_x_send_avatar_data(sess)
   fmv.ObjectUpdate_RegionData(p, smv_get_region_handle(), 32766);
   fmv.ObjectUpdate_ObjectDataBlockSize(p, 1)
   -- fmv.ObjectDataBlock(p, )
-  smv_create_avatar_data(sess, p)
+  smv_create_avatar_data(sess, p, 15.0, 20.0, 20.0)
   smv_send_then_unlock(sess, p)
 end
 
@@ -383,10 +386,10 @@ function smv_packet(idx, d)
 	smv_x_send_avatar_data(sess)
 
       elseif gid == "StartPingCheck" then
-	smv_x_send_avatar_data(sess)
         smv_ping_check_reply(sess, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
+	smv_x_send_avatar_data(sess)
       elseif gid == "AgentDataUpdateRequest" then
         smv_agent_data_update(sess, d)
       elseif gid == "AgentUpdate" then
