@@ -250,13 +250,64 @@ function smv_parcel_properties_request(sess, d)
 
 end
 
+function smv_estate_covenant_request(sess, d)
+  local p = fmv.packet_new()
+  fmv.EstateCovenantReplyHeader(p)
+  fmv.EstateCovenantReply_Data(p, 
+      zero_uuid, -- CovenantID
+      12345, -- CovenantTimestamp
+      "Test Estate Name\0", -- EstateName
+      sess.AgentID -- EstateOwnerID
+    )
+  
+  smv_send_then_unlock(sess, p)
+end
+
+function smv_parcel_dwell_request(sess, d)
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_ParcelDwellRequest_AgentData(d)
+  local LocalID, ParcelID = fmv.Get_ParcelDwellRequest_Data(d)
+  print("Parcel dwell request: ", LocalID, ParcelID)
+  fmv.ParcelDwellReplyHeader(p)
+  fmv.ParcelDwellReply_AgentData(p, AgentID)
+  fmv.ParcelDwellReply_Data(p, LocalID, ParcelID, 0);
+  
+  smv_send_then_unlock(sess, p)
+end
+
+function smv_parcel_access_list_request(sess, d)
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_ParcelAccessListRequest_AgentData(d)
+  local SequenceID, Flags, LocalID = fmv.Get_ParcelAccessListRequest_Data(d)
+  print("Parcel ACL request: ", SequenceID, Flags, LocalID)
+  fmv.ParcelAccessListReplyHeader(p)
+  fmv.ParcelAccessListReply_Data(p, AgentID, SequenceID, Flags, LocalID)
+  fmv.ParcelAccessListReply_ListBlockSize(p, 1)
+  fmv.ParcelAccessListReply_ListBlock(p, 0, AgentID, 10000, 0)
+  smv_send_then_unlock(sess, p)
+end
+
+function smv_uuid_name_request(sess, d)
+  local p = fmv.packet_new()
+  local bs = fmv.Get_UUIDNameRequest_UUIDNameBlockBlockSize(d)
+  fmv.UUIDNameReplyHeader(p)
+  fmv.UUIDNameReply_UUIDNameBlockBlockSize(p, bs)
+
+  for i=0,bs-1 do
+    local uuid = fmv.Get_UUIDNameRequest_UUIDNameBlockBlock(d, i)
+    print("Request for resolving UUID for ", uuid)
+    fmv.UUIDNameReply_UUIDNameBlockBlock(p, i, uuid, "Test\0", "User | example.org\0")
+  end
+  smv_send_then_unlock(sess, p)
+end
+
 function smv_viewer_effect(sess, d)
   local AgentID, SessionID = fmv.Get_ViewerEffect_AgentData(d)
   local bs = fmv.Get_ViewerEffect_EffectBlockSize(d)
-  print("Viewer effect block size:", bs)
+  -- print("Viewer effect block size:", bs)
   for i=1,bs do
     local ID, AgentID, Type, Duration, Color, TypeData = fmv.Get_ViewerEffect_EffectBlock(d, i-1)
-    print("Effect block", ID, AgentID, Type, Duration, #Color, #TypeData)
+    -- print("Effect block", ID, AgentID, Type, Duration, #Color, #TypeData)
   end
 end
 
@@ -423,10 +474,18 @@ function smv_packet(idx, d)
         smv_chat_from_viewer(sess, d)
       elseif gid == "ParcelPropertiesRequest" then
         smv_parcel_properties_request(sess, d)
+      elseif gid == "EstateCovenantRequest" then
+        smv_estate_covenant_request(sess, d)
+      elseif gid == "ParcelDwellRequest" then
+        smv_parcel_dwell_request(sess, d)
+      elseif gid == "ParcelAccessListRequest" then
+        smv_parcel_access_list_request(sess, d)
       elseif gid == "SetAlwaysRun" then
       elseif gid == "ViewerEffect" then
         smv_viewer_effect(sess, d)
         -- FIXME: alwaysrun
+      elseif gid == "UUIDNameRequest" then
+        smv_uuid_name_request(sess, d)
       elseif gid == "RequestImage" then
         local bs = fmv.Get_RequestImage_RequestImageBlockSize(d)
         print ("Image request blocks: " .. tostring(bs))
