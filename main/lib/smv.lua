@@ -162,7 +162,7 @@ function smv_parcel_properties_request(sess, d)
   local bitmap = string.rep('\255', 512)
   local p = fmv.packet_new()
   fmv.ParcelPropertiesHeader(p)
-  print("Length: ", #bitmap)
+  -- print("Length: ", #bitmap)
   
   fmv.ParcelProperties_ParcelData(p, 
      1, -- RequestResult
@@ -274,10 +274,35 @@ function smv_agent_wearables_update(sess, d)
       item.AssetID, -- AssetID
       item.WearableType -- WearableType
     )
-    print("Wearable:", total_wearables) 
+    print("Wearable#:", total_wearables, "uuid:", uuid, "asset:", item.AssetID) 
     total_wearables = total_wearables + 1
   end
   fmv.AgentWearablesUpdate_WearableDataBlockSize(p, total_wearables)
+  smv_send_then_unlock(sess, p)
+end
+
+function smv_transfer_request(sess, d)
+  local TransferID, ChannelType, SourceType, Priority, Params = fmv.Get_TransferRequest_TransferInfo(d)
+  print("Transfer request", TransferID, "ChannelType", ChannelType, "SourceType", SourceType)
+  print("Priority", Priority, "Param len:", #Params)
+  local p = fmv.packet_new()
+  local item_id = fmv.uuid_from_bytes(Params)
+  local item = smv_state.assets[item_id]
+  print("Transfer req for id", item_id)
+  if item then
+    print("Item found! length:", #(item.AssetData))
+    fmv.TransferPacketHeader(p)
+    fmv.TransferPacket_TransferData(p, TransferID, ChannelType, 
+      0, -- Packet
+      1, -- Status
+      item.AssetData);
+  else
+    fmv.TransferPacketHeader(p)
+    fmv.TransferPacket_TransferData(p, TransferID, ChannelType,
+      0, 1, "")
+    print("Item not found")
+    
+  end
   smv_send_then_unlock(sess, p)
 end
 
@@ -329,7 +354,7 @@ function smv_create_avatar_data(sess, p, xPos, yPos, zPos)
                      string.rep("\0", 28) .. 
                      string.char(128) .. string.rep("\0", 4) .. string.char(102, 140, 61, 189) ..
 		     string.rep("\0", 11)
-  print("Avatar data length:", #objectdata)
+  -- print("Avatar data length:", #objectdata)
   fmv.ObjectUpdate_ObjectDataBlock(p, 0,
     569, -- agent local id
     0, -- State
@@ -556,6 +581,8 @@ function smv_packet(idx, d)
         smv_create_inventory_item(sess, d)
       elseif gid == "UpdateInventoryItem" then
         -- FIXME!!!!
+      elseif gid == "TransferRequest" then
+        smv_transfer_request(sess, d)
       elseif gid == "MoneyBalanceRequest" then
         smv_send_money_balance(sess, d)
       elseif gid == "LogoutRequest" then
@@ -578,7 +605,7 @@ function smv_packet(idx, d)
         smv_uuid_name_request(sess, d)
       elseif gid == "RequestImage" then
         local bs = fmv.Get_RequestImage_RequestImageBlockSize(d)
-        print ("Image request blocks: " .. tostring(bs))
+        -- print ("Image request blocks: " .. tostring(bs))
       else
         print("Packet received on index " .. tostring(idx) .. " - " .. gid .. "\n")
       end

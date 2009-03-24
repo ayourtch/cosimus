@@ -190,11 +190,12 @@ static int
 lua_fn_uuid_from_bytes(lua_State *L) {
   size_t sz;
   const char *s = luaL_checklstring(L, 1, &sz);
+  int offs = 0;
   uuid_t uuid;
-  if(sz != sizeof(uuid_t)) {
+  if(sz < sizeof(uuid_t)) {
     luaL_error(L, "Expected UUID (%d bytes string) as arg %d, got %d bytes", sizeof(uuid_t), 1, sz);
   }
-  memcpy(&uuid, s, sz);
+  UDP_LLUUID(&uuid, (void *)s, &offs);
   lua_pushx_uuid(L, &uuid);
   return 1;
 }
