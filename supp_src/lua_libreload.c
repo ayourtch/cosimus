@@ -14,8 +14,10 @@ fn_child(lua_State *L) {
   lua_pushstring(L1, fname);
   err = lua_pcall(L1, 1, 0, 0);
   if(err) {
+    char *str = (void *)lua_tostring(L1, 1);
     lua_pushstring(L, "error_require");
-    lua_pushstring(L, lua_tostring(L1, -1));
+    // lua_pushstring(L, lua_tostring(L1, -1));
+    lua_pushstring(L, str);
   } else {
     lua_getglobal(L1, "main");
     lua_pushstring(L1, arg);

@@ -265,7 +265,7 @@ function smv_agent_data_update(sess, d)
   local p = fmv.packet_new()
   fmv.AgentDataUpdateHeader(p)
   fmv.AgentDataUpdate_AgentData(p, 
-      AgentID, 
+      AgentID,
       "Dalien", -- FirstName
       "Talbot | domain.com", -- LastName
       "TestGroup Title", -- GroupTitle
@@ -344,6 +344,7 @@ function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
   local remote_str = remote_addr .. ':' .. tostring(remote_port)
+  print("Got packet")
   if gid == "UseCircuitCode" then
     local circuit_code, session_id, user_id = fmv.Get_UseCircuitCode_CircuitCode(d)
     print("Circuit code: " .. tostring(circuit_code))

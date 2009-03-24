@@ -378,6 +378,8 @@ static int smv_packet(int idx, dbuf_t *d0, void *ptr) {
   dbuf_t *d;
   lua_State *L = ptr;
 
+  printf("Received packet\n");
+
   d = MaybeZeroDecodePacket(d0);
   lua_getglobal(L, "smv_packet");
   lua_pushnumber(L, idx);
@@ -414,6 +416,7 @@ static const luaL_reg smvlib[] = {
 };
 
 LUA_API int luaopen_libpktsmv (lua_State *L) {
+  printf("Address of event handler: %x\n", (unsigned int)smv_packet);
   luaL_openlib(L, "smv", smvlib, 0);
   return 1;
 }
