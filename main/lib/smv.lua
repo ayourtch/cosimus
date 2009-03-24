@@ -286,7 +286,7 @@ function smv_create_avatar_data(sess, p, xPos, yPos, zPos)
 		     string.rep("\0", 11)
   print("Avatar data length:", #objectdata)
   fmv.ObjectUpdate_ObjectDataBlock(p, 0,
-    568, -- agent local id
+    569, -- agent local id
     0, -- State
     sess.AgentID, -- FullID
     0, -- CRC
@@ -313,7 +313,7 @@ function smv_create_avatar_data(sess, p, xPos, yPos, zPos)
     "", -- TextureEntry
     "", -- TextureAnim
     "FirstName STRING RW SV Test User\nLastName STRING RW SV | example.com\0", --NameValue
-    "", -- Data
+    "SomeData", -- Data
     "TestText", -- Text
     "\0\255\0\0", -- TextColor
     "\0", -- MediaURL
@@ -336,7 +336,7 @@ function smv_x_send_avatar_data(sess)
   fmv.ObjectUpdate_RegionData(p, smv_get_region_handle(), 32766);
   fmv.ObjectUpdate_ObjectDataBlockSize(p, 1)
   -- fmv.ObjectDataBlock(p, )
-  smv_create_avatar_data(sess, p, 15.0, 20.0, 20.0)
+  smv_create_avatar_data(sess, p, 15.0, 15.0, 2.0)
   smv_send_then_unlock(sess, p)
 end
 
