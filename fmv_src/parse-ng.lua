@@ -596,7 +596,11 @@ function LuaCodeFieldFromUdp(otab, field)
     otab.p('      luaL_error(L, "Could not alloc temp storage");\n')
     otab.p('    }\n')
   end
-  otab.p("    UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n);\n")
+  if IsArrayField(field) and ArrayFieldKind(field) > 0 then
+    otab.p("    " .. ArrayFieldLengthName(field) .. " = UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n);\n")
+  else
+    otab.p("    UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n);\n")
+  end
   otab.p("    " .. LuaPushFieldStr(field) .. "\n")
   if IsArrayField(field) then
     otab.p("    /* fixme: free temp storage here */\n")
