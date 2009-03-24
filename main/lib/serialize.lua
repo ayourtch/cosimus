@@ -60,11 +60,7 @@ x = serialize("t", t)
 t = {}
 deserialize(x)
 
-f = io.open("test.lua", "w+")
-s = su.dgetstr(serialize("t", t))
-f:write(s)
-io.close(f)
-
+print(su.dgetstr(serialize("t", t)))
 
 
 ]]

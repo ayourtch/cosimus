@@ -178,14 +178,6 @@ lua_fn_F32_UDP(lua_State *L) {
   return 1;
 }
 
-static int
-lua_fn_uuid_create(lua_State *L) {
-  uuid_t uuid;
-  uuid_create(&uuid);
-  lua_pushx_uuid(L, &uuid);
-  return 1;
-}
-
 const luaL_reg fmv_sta_lib[] = {
   { "packet_new", lua_fn_packet_new },
   { "packet_lock", lua_fn_packet_lock },
@@ -197,7 +189,6 @@ const luaL_reg fmv_sta_lib[] = {
   { "GetRegionHandle", lua_fn_GetRegionHandle },
   { "IsReliable", lua_fn_IsReliable },
   { "F32_UDP", lua_fn_F32_UDP }, 
-  { "uuid_create", lua_fn_uuid_create },
   { NULL, NULL }
 };
 
