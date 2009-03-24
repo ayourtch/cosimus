@@ -186,6 +186,21 @@ lua_fn_uuid_create(lua_State *L) {
   return 1;
 }
 
+static int
+lua_fn_uuid_from_bytes(lua_State *L) {
+  size_t sz;
+  const char *s = luaL_checklstring(L, 1, &sz);
+  uuid_t uuid;
+  if(sz != sizeof(uuid_t)) {
+    luaL_error(L, "Expected UUID (%d bytes string) as arg %d, got %d bytes", sizeof(uuid_t), 1, sz);
+  }
+  memcpy(&uuid, s, sz);
+  lua_pushx_uuid(L, &uuid);
+  return 1;
+}
+
+
+
 const luaL_reg fmv_sta_lib[] = {
   { "packet_new", lua_fn_packet_new },
   { "packet_lock", lua_fn_packet_lock },
@@ -198,6 +213,7 @@ const luaL_reg fmv_sta_lib[] = {
   { "IsReliable", lua_fn_IsReliable },
   { "F32_UDP", lua_fn_F32_UDP }, 
   { "uuid_create", lua_fn_uuid_create },
+  { "uuid_from_bytes", lua_fn_uuid_from_bytes },
   { NULL, NULL }
 };
 
