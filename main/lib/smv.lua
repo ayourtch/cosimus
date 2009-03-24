@@ -340,6 +340,23 @@ function smv_x_send_avatar_data(sess)
   smv_send_then_unlock(sess, p)
 end
 
+function smv_agent_update_received(sess, d)
+  local AgentID, SessionID, 
+    xBodyRotation, yBodyRotation, zBodyRotation, wBodyRotation,
+    xHeadRotation, yHeadRotation, zHeadRotation, wHeadRotation,
+    State,
+    xCameraCenter, yCameraCenter, zCameraCenter,
+    xCameraAtAxis, yCameraAtAxis, zCameraAtAxis,
+    xCameraLeftAxis, yCameraLeftAxis, zCameraLeftAxis,
+    xCameraUpAxis, yCameraUpAxis, zCameraUpAxis,
+    Far,
+    ControlFlags,
+    Flags = fmv.Get_AgentUpdate_AgentData(d)
+
+  -- print("Agent update camera is at:", xCameraCenter, yCameraCenter, zCameraCenter)
+
+end
+
 function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
@@ -394,6 +411,7 @@ function smv_packet(idx, d)
       elseif gid == "AgentDataUpdateRequest" then
         smv_agent_data_update(sess, d)
       elseif gid == "AgentUpdate" then
+        smv_agent_update_received(sess, d)
         -- frequent agent updates go here
       elseif gid == "AgentHeightWidth" then
         smv_agent_width_height(sess, d)
