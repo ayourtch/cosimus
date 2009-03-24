@@ -250,6 +250,93 @@ function smv_parcel_properties_request(sess, d)
 
 end
 
+function smv_viewer_effect(sess, d)
+  local AgentID, SessionID = fmv.Get_ViewerEffect_AgentData(d)
+  local bs = fmv.Get_ViewerEffect_EffectBlockSize(d)
+  print("Viewer effect block size:", bs)
+  for i=1,bs do
+    local ID, AgentID, Type, Duration, Color, TypeData = fmv.Get_ViewerEffect_EffectBlock(d, i-1)
+    print("Effect block", ID, AgentID, Type, Duration, #Color, #TypeData)
+  end
+end
+
+function smv_agent_data_update(sess, d)
+  local AgentID, SessionID = fmv.Get_ViewerEffect_AgentData(d)
+  local p = fmv.packet_new()
+  fmv.AgentDataUpdateHeader(p)
+  fmv.AgentDataUpdate_AgentData(p, 
+      AgentID, 
+      "Dalien", -- FirstName
+      "Talbot | domain.com", -- LastName
+      "TestGroup Title", -- GroupTitle
+      AgentID, -- ActiveGroupID
+      "\0\0\0\0\0\0\0\0", -- GroupPowers
+      "TestGroupName" -- GroupName
+      )
+  smv_send_then_unlock(sess, p)
+end
+
+function smv_create_avatar_data(sess, p)
+  -- magic objectdata values.
+  local objectdata = string.rep("\0", 15) .. string.char(128, 63) .. string.rep("\0", 39) .. 
+                     string.char(128) .. string.rep("\0", 4) .. string.char(102, 140, 61, 189) ..
+		     string.rep("\0", 11)
+  print("Avatar data length:", #objectdata)
+  fmv.ObjectUpdate_ObjectDataBlock(p, 0,
+    568, -- agent local id
+    0, -- State
+    sess.AgentID, -- FullID
+    0, -- CRC
+    47, -- PCode, 
+    4, -- Material
+    0, -- ClickAction
+    1.0, 1.0, 1.0, -- Scale
+    objectdata, -- ObjectData[76]
+    0, -- ParentID 
+    276957501, -- UpdateFlags
+    16, -- PathCurve
+    1, -- ProfileCurve
+    0, -- PathBegin
+    0, -- PathEnd
+    100, 100, -- PathScale X/Y
+    0, 0, -- PathShearX/Y
+    0, 0, -- PathTwist / PathTwistBegin
+    0, -- PathRadiusOffset
+    0, 0, -- PathTaperX/Y
+    0, -- PathRevolutions
+    0, -- PathSkew
+    0, 0, -- Profile Begin/End
+    0, -- ProfileHollow
+    "", -- TextureEntry
+    "", -- TextureAnim
+    "FirstName STRING RW SV Test User\nLastName STRING RW SV | example.com\0", --NameValue
+    "", -- Data
+    "TestText", -- Text
+    "\0\0\0\0", -- TextColor
+    "\0", -- MediaURL
+    "", -- PSBlock
+    "", -- ExtraParams
+    zero_uuid, -- Sound
+    zero_uuid, -- OwnerID
+    0, -- Gain
+    0, -- Flags
+    0, -- Radius
+    0, -- JointType
+    0.0, 0.0, 0.0, -- JointPivot
+    0.0, 0.0, 0.0 -- JointAxisOrAnchor
+  )
+end
+
+function smv_x_send_avatar_data(sess)
+  local p = fmv.packet_new()
+  fmv.ObjectUpdateHeader(p)
+  fmv.ObjectUpdate_RegionData(p, smv_get_region_handle(), 32766);
+  fmv.ObjectUpdate_ObjectDataBlockSize(p, 1)
+  -- fmv.ObjectDataBlock(p, )
+  smv_create_avatar_data(sess, p)
+  smv_send_then_unlock(sess, p)
+end
+
 function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
@@ -292,12 +379,16 @@ function smv_packet(idx, d)
         smv_send_agent_movement_complete(sess)
 	smv_send_parcel_overlay(sess)
 	smv.SendLayerData(sess)
-	smv_parcel_properties_request(sess, d)
+	-- smv_parcel_properties_request(sess, d)
+	smv_x_send_avatar_data(sess)
 
       elseif gid == "StartPingCheck" then
+	smv_x_send_avatar_data(sess)
         smv_ping_check_reply(sess, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
+      elseif gid == "AgentDataUpdateRequest" then
+        smv_agent_data_update(sess, d)
       elseif gid == "AgentUpdate" then
         -- frequent agent updates go here
       elseif gid == "AgentHeightWidth" then
@@ -310,6 +401,10 @@ function smv_packet(idx, d)
         smv_chat_from_viewer(sess, d)
       elseif gid == "ParcelPropertiesRequest" then
         smv_parcel_properties_request(sess, d)
+      elseif gid == "SetAlwaysRun" then
+      elseif gid == "ViewerEffect" then
+        smv_viewer_effect(sess, d)
+        -- FIXME: alwaysrun
       elseif gid == "RequestImage" then
         local bs = fmv.Get_RequestImage_RequestImageBlockSize(d)
         print ("Image request blocks: " .. tostring(bs))

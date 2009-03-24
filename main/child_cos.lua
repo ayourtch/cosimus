@@ -51,6 +51,8 @@ function main(start)
       local smv_ser = smv.serialize()
       print("setting parent state to: ", smv_ser)
       libreload.parent_run("set_runtime_state", "smv_lua_state", smv_ser)
+      -- poor man's way to ensure the file is not half-written before updating (FIXME!)
+      os.execute("sleep 1")
     end
   end
   return retcode
