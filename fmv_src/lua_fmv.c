@@ -161,6 +161,13 @@ lua_fn_GetRegionHandle(lua_State *L) {
   return 1;
 }
 
+static int 
+lua_fn_IsReliable(lua_State *L) {
+  dbuf_t *d = luaL_checkuserdata(L, 1);
+  lua_pushboolean(L, IsReliable(d->buf));
+  return 1;
+}
+
 
 
 const luaL_reg fmv_sta_lib[] = {
@@ -172,6 +179,7 @@ const luaL_reg fmv_sta_lib[] = {
   { "MaybeZeroEncodePacket", lua_fn_MaybeZeroEncodePacket },
   { "MaybeZeroDecodePacket", lua_fn_MaybeZeroDecodePacket },
   { "GetRegionHandle", lua_fn_GetRegionHandle },
+  { "IsReliable", lua_fn_IsReliable },
   { NULL, NULL }
 };
 

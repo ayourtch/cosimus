@@ -141,6 +141,115 @@ function smv_logout_session(sess)
   smv_state.sessions[session_id] = nil
 end
 
+function smv_agent_width_height(sess, d)
+  local GenCounter, Height, Width = fmv.Get_AgentHeightWidth_HeightWidthBlock(d)
+  print ("Agent gencounter: ", GenCounter, " width/height: ", Width, Height)
+end
+
+function smv_chat_from_viewer(sess, d)
+  local AgentID, SessionID = fmv.Get_ChatFromViewer_AgentData(d)
+  local Message, Type, Channel = fmv.Get_ChatFromViewer_ChatData(d)
+  print("Chat from viewer type ", Type, " channel ", Channel, " message ", Message)
+end
+
+function smv_parcel_properties_request(sess, d)
+  local AgentID, SessionID = fmv.Get_ParcelPropertiesRequest_AgentData(d)
+  local SequenceID, West, South, East, North, SnapSelection = fmv.Get_ParcelPropertiesRequest_ParcelData(d)
+  local bitmap = 
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255" ..
+    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255"
+  local p = fmv.packet_new()
+  fmv.ParcelPropertiesHeader(p)
+  print("Length: ", #bitmap)
+  
+  fmv.ParcelProperties_ParcelData(p, 
+     1, -- RequestResult
+     SequenceID, -- SequenceID
+     SnapSelection, -- SnapSelection
+     1, -- SelfCount
+     0, -- OtherCount
+     1, -- PublicCount
+     12345, -- LocalID (of what?)
+     AgentID, -- OwnerID, temporarily set to user id for test
+     0, -- IsGroupOwned
+     0, -- AuctionID
+     10000, -- ClaimDate
+     0, -- ClaimPrice
+     0, -- RentPrice
+     0.0, 0.0, 0.0, -- AABBMin
+     256.0, 256.0, 256.0, -- AABBMax
+     bitmap, -- Bitmap
+     65536, -- Area
+     0, -- Status
+     12345, -- SimWideMaxPrims
+     33, -- SimWideTotalPrims
+     250, -- MaxPrims
+     200, -- TotalPrims
+     150, -- OwnerPrims
+     10, -- GroupPrims
+     40, -- OtherPrims
+     0, -- SelectedPrims
+     0.0, -- ParcelPrimBonus
+     0, -- OtherCleanTime
+     0, -- ParcelFlags
+     0, -- SalePrice
+     "Dalien's parcel test\0", -- Name
+     "Description of dalien's parcel here\0", -- Desc
+     "http://127.0.0.1/test\0", -- MusicURL
+     "http://127.0.0.1/test2\0", -- MediaURL
+     0, -- MediaID
+     1, -- MediaAutoScale
+     zero_uuid, -- GroupID
+     0, -- PassPrice
+     0, -- PassHours
+     0, -- Category
+     zero_uuid, -- AuthBuyerID
+     zero_uuid, -- SnapshotID
+     0.0, 0.0, 0.0, -- UserLocation
+     0.0, 0.0, 0.0, -- UserLookAt
+     0, -- LandingType
+     0, -- RegionPushOverride
+     0, -- RegionDenyAnonymous
+     0, -- RegionDenyIdentified
+     0 -- RegionDenyTransacted
+     )
+  fmv.ParcelProperties_AgeVerificationBlock(p, 
+     0 -- RegionDenyAgeUnverified
+     )
+  smv_send_then_unlock(sess, p)
+
+end
+
 function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
@@ -172,10 +281,18 @@ function smv_packet(idx, d)
   else 
     local sess = smv_state.sessions[smv_state.sess_id_by_remote[remote_str]]
     if sess then
-      if gid == "CompleteAgentMovement" then
+      if gid == "PacketAck" then
+      elseif fmv.IsReliable(d) then
+        print("Got a reliable packet!\n")
+        smv_ack_immed(sess, d)
+      end
+      if gid == "PacketAck" then
+        -- do nothing
+      elseif gid == "CompleteAgentMovement" then
         smv_send_agent_movement_complete(sess)
 	smv_send_parcel_overlay(sess)
 	smv.SendLayerData(sess)
+	smv_parcel_properties_request(sess, d)
 
       elseif gid == "StartPingCheck" then
         smv_ping_check_reply(sess, d)
@@ -183,10 +300,16 @@ function smv_packet(idx, d)
         smv_ping_check_reply(sess, d)
       elseif gid == "AgentUpdate" then
         -- frequent agent updates go here
+      elseif gid == "AgentHeightWidth" then
+        smv_agent_width_height(sess, d)
       elseif gid == "MoneyBalanceRequest" then
         smv_send_money_balance(sess, d)
       elseif gid == "LogoutRequest" then
         smv_logout_session(sess)
+      elseif gid == "ChatFromViewer" then
+        smv_chat_from_viewer(sess, d)
+      elseif gid == "ParcelPropertiesRequest" then
+        smv_parcel_properties_request(sess, d)
       elseif gid == "RequestImage" then
         local bs = fmv.Get_RequestImage_RequestImageBlockSize(d)
         print ("Image request blocks: " .. tostring(bs))
