@@ -772,7 +772,7 @@ function CodeGetVariableBlock(otab, block, prototype_only)
 end
 
 function LuaCodeGetVariableBlock(otab, block)
-  LuaStartFunc(otab, 'Get_' .. block.fullname)
+  LuaStartFunc(otab, 'Get_' .. block.fullname .. "Block")
   LuaCodeN(otab, block);
   otab.p('  lua_argn = 0;\n')
   BlockFieldsForeach(otab, block, LuaCodeFieldFromUdp)
