@@ -6,6 +6,9 @@ require 'serialize'
 smv_state = {}
 smv_state.sessions = {}
 smv_state.sess_id_by_remote = {}
+smv_state.assets = {}
+smv_state.uploads = {}
+smv_state.inventory = {}
 
 zero_uuid = "00000000-0000-0000-0000-000000000000"
 
@@ -287,6 +290,24 @@ function smv_parcel_access_list_request(sess, d)
   smv_send_then_unlock(sess, p)
 end
 
+function smv_agent_wearables_update(sess, d)
+  print("Wearables update")
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_AgentWearablesRequest_AgentData(d)
+  
+  fmv.AgentWearablesUpdateHeader(p)
+  fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 23456)
+  fmv.AgentWearablesUpdate_WearableDataBlockSize(p, 15)
+  for i=0, 14 do
+    fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
+      zero_uuid, -- ItemID
+      zero_uuid, -- AssetID
+      i -- WearableType
+    )
+  end
+  smv_send_then_unlock(sess, p)
+end
+
 function smv_uuid_name_request(sess, d)
   local p = fmv.packet_new()
   local bs = fmv.Get_UUIDNameRequest_UUIDNameBlockBlockSize(d)
@@ -408,6 +429,105 @@ function smv_agent_update_received(sess, d)
 
 end
 
+function smv_asset_upload_request(sess, d)
+  local p = fmv.packet_new()
+  local newasset = {}
+  local uuid = fmv.uuid_create()
+  local TransactionID, Type, Tempfile, StoreLocal, AssetData = fmv.Get_AssetUploadRequest_AssetBlock(d)
+  print("Asset upload request: ", TransactionID, Type, Tempfile, StoreLocal, #AssetData)
+  print("Asset Data:", AssetData)
+  smv_state.uploads[TransactionID] = uuid
+  smv_state.assets[uuid] = newasset
+  newasset.AssetID = uuid
+  newasset.Type = Type
+  newasset.Tempfile = Tempfile
+  newasset.StoreLocal = StoreLocal
+  newasset.AssetData = AssetData
+
+  fmv.AssetUploadCompleteHeader(p)
+  fmv.AssetUploadComplete_AssetBlock(p, TransactionID, Type, true)
+  smv_send_then_unlock(sess, p)
+end
+
+function smv_create_inventory_item(sess, d)
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_CreateInventoryItem_AgentData(d)
+  local CallbackID, FolderID, TransactionID, NextOwnerMask, Type, InvType, 
+        WearableType, Name, Description = fmv.Get_CreateInventoryItem_InventoryBlock(d)
+
+
+  local ItemID = fmv.uuid_create();
+  local BaseMask = NextOwnerMask;
+  local AssetID = fmv.uuid_create();
+  local Flags = 0
+  local newasset
+
+  print("TransactionID for create inventory item:", TransactionID)
+  newasset = smv_state.assets[smv_state.uploads[TransactionID]]
+  -- AssetID = newasset.AssetID
+
+  fmv.UpdateCreateInventoryItemHeader(p)
+  fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
+      true, -- SimApproved
+      TransactionID -- TransactionID
+    )
+  fmv.UpdateCreateInventoryItem_InventoryDataBlockSize(p,1)
+  fmv.UpdateCreateInventoryItem_InventoryDataBlock(p, 0, 
+      ItemID, 
+      FolderID, 
+      CallbackID,
+      AgentID, -- CreatorID
+      AgentID, -- OwnerID
+      zero_uuid, -- GroupID
+      BaseMask, -- BaseMask
+      BaseMask, -- OwnerMask
+      BaseMask, -- GroupMask
+      BaseMask, -- EveryoneMask
+      NextOwnerMask, -- NextOwnerMask
+      false, -- GroupOwned
+      AssetID, -- AssetID
+      Type, -- Type
+      InvType, -- InvType
+      Flags, -- Flags
+      0, -- SaleType,
+      123, -- SalePrice
+      Name, -- Name
+      Description, -- Description
+      100000, -- CreationDate
+      0 -- CRC
+    )
+  smv_send_then_unlock(sess, p)
+end
+
+-- AgentSetAppearance
+-- AgentIsNowWearing
+
+function smv_agent_is_now_wearing(sess, d)
+  print("Agent is now wearing...")
+end
+
+function smv_agent_set_appearance(sess, d)
+  print("Agent Set Appearance")
+end
+
+function smv_agent_wearables_update_inactive(sess, d)
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_AgentWearablesRequest_AgentData(d)
+  
+  fmv.AgentWearablesUpdateHeader(p)
+  fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 23456)
+  fmv.AgentWearablesUpdate_WearableDataBlockSize(p, 15)
+  for i=0, 14 do
+    fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
+      AgentID, -- ItemID
+      AgentID, -- AssetID
+      i -- WearableType
+    )
+  end
+  smv_send_then_unlock(sess, p)
+end
+
+
 function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
@@ -458,12 +578,18 @@ function smv_packet(idx, d)
         smv_ping_check_reply(sess, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
-	smv_x_send_avatar_data(sess)
+	-- smv_x_send_avatar_data(sess)
       elseif gid == "AgentDataUpdateRequest" then
         smv_agent_data_update(sess, d)
       elseif gid == "AgentUpdate" then
-        smv_agent_update_received(sess, d)
         -- frequent agent updates go here
+        smv_agent_update_received(sess, d)
+      elseif gid == "AgentWearablesRequest" then
+        smv_agent_wearables_update(sess, d)
+      elseif gid == "AgentIsNowWearing" then
+        smv_agent_is_now_wearing(sess, d)
+      elseif gid == "AgentSetAppearance" then
+        smv_agent_set_appearance(sess, d)
       elseif gid == "AgentHeightWidth" then
         smv_agent_width_height(sess, d)
       elseif gid == "MoneyBalanceRequest" then
@@ -480,6 +606,10 @@ function smv_packet(idx, d)
         smv_parcel_dwell_request(sess, d)
       elseif gid == "ParcelAccessListRequest" then
         smv_parcel_access_list_request(sess, d)
+      elseif gid == "AssetUploadRequest" then
+        smv_asset_upload_request(sess, d)
+      elseif gid == "CreateInventoryItem" then
+        smv_create_inventory_item(sess, d)
       elseif gid == "SetAlwaysRun" then
       elseif gid == "ViewerEffect" then
         smv_viewer_effect(sess, d)
@@ -505,7 +635,10 @@ end
 
 smv.serialize = function()
   local s = serialize("smv_state", smv_state)
+  -- local f = io.open("luastate.lua", "w+")
   print "Serialized Lua state: "
   print(s)
+  -- f:write(su.dgetstr(s))
+  -- io.close(f)
   return s
 end
