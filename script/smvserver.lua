@@ -844,6 +844,4 @@ function interrupt_save_state()
   smv.serialize()
 end
 
-smv.start_listener("0.0.0.0", 9000)
-print("Lua SMV startup complete!\n")
-
+print("SMV Lua loaded")
