@@ -46,7 +46,7 @@
 #ifdef XXXXXX
 struct pollfd libsock_data->ufds[MAX_FDS];
 conndata_t libsock_data->cdata[MAX_FDS];
-int libsock_data->nfds = 0;
+int nfds = 0;
 
 int nclients = 0;               /* number of active inbound connections */
 
@@ -85,7 +85,7 @@ print_cdata(int i, int debuglevel)
 void print_socks(void)
 {
   int i;
-  for(i = 0; i < libsock_data->nfds; i++) {
+  for(i = 0; i < nfds; i++) {
     print_cdata(i, 0);
   }
 }
@@ -106,7 +106,7 @@ pkt_dprint_cdata_all(dbuf_t * d)
 {
   int i;
 
-  for(i = 0; i < libsock_data->nfds; i++) {
+  for(i = 0; i < nfds; i++) {
     pkt_dprint_cdata(i, d);
   }
 }
@@ -406,7 +406,7 @@ ev_closed(int idx, void *u_ptr)
   dunlock(libsock_data->cdata[idx].appdata);
 
   if(libsock_data->cdata[idx].inbound) {
-    libsock_data->nclients--;
+    nclients--;
     /*
        if(nclients == 0) {
        debug(DBG_GLOBAL, 1, "Last client went away, close the outbound connection");
@@ -471,8 +471,8 @@ initiate_connect(char *addr, int port)
   int idx = -1;
   struct hostent *hp;
 
-  assert(libsock_data->nfds <= MAX_FDS);      /* we should never go _above_ */
-  if(libsock_data->nfds == MAX_FDS) {
+  assert(nfds <= MAX_FDS);      /* we should never go _above_ */
+  if(nfds == MAX_FDS) {
     printf
       ("Too many sockets opened, can not initiate outbound connection to %s:%d!",
        addr, port);
@@ -498,19 +498,19 @@ initiate_connect(char *addr, int port)
     return -1;
   } else {
     if(errno == EINPROGRESS) {
-      init_idx(libsock_data->nfds);
-      libsock_data->ufds[libsock_data->nfds].fd = s;
+      init_idx(nfds);
+      libsock_data->ufds[nfds].fd = s;
       /*
          the socket connection once completed, appears to cause the POLLIN rather than pollout event 
        */
-      libsock_data->ufds[libsock_data->nfds].events |= POLLOUT;     /* we want to know when we get connected */
-      libsock_data->cdata[libsock_data->nfds].connected = 0;        /* we did not connect yet */
-      libsock_data->cdata[libsock_data->nfds].inbound = 0;  /* outbound connection */
-      idx = libsock_data->nfds;
+      libsock_data->ufds[nfds].events |= POLLOUT;     /* we want to know when we get connected */
+      libsock_data->cdata[nfds].connected = 0;        /* we did not connect yet */
+      libsock_data->cdata[nfds].inbound = 0;  /* outbound connection */
+      idx = nfds;
       debug(DBG_GLOBAL, 1,
             "Outbound connection in progress for index %d to %s:%d",
             idx, addr, port);
-      libsock_data->nfds++;
+      nfds++;
 
     } else {
       debug(DBG_GLOBAL, 1,
@@ -538,6 +538,7 @@ ev_newconn(int idx, int parent, void *u_ptr)
   libsock_data->cdata[idx].inbound = 1;
   libsock_data->cdata[idx].l7state = 0;
   libsock_data->cdata[idx].recv_list = 0;
+  nconnections++;
 
 
   debug(DBG_GLOBAL, 1,
@@ -588,13 +589,13 @@ sock_get_free_index(int minimum)
 {
   int i;
 
-  for(i = minimum; i < libsock_data->nfds; i++) {
+  for(i = minimum; i < nfds; i++) {
     if(libsock_data->ufds[i].fd == -1) {
       return i;
     }
   }
-  i = libsock_data->nfds;
-  libsock_data->nfds++;
+  i = nfds;
+  nfds++;
   return i;
 }
 
@@ -644,10 +645,10 @@ bind_udp_listener_specific(char *addr, int port, char *remote)
   struct hostent *hp;
   int s = create_udp_socket();
   int idx =
-    bind_socket_listener_specific(sock_get_free_index(libsock_data->biggest_udp_idx), s,
+    bind_socket_listener_specific(sock_get_free_index(biggest_udp_idx), s,
                                   addr, port);
 
-  libsock_data->biggest_udp_idx = idx;
+  biggest_udp_idx = idx;
 
   libsock_data->cdata[idx].is_udp = 1;
 
@@ -726,7 +727,7 @@ sock_tcp_listener_pollin(int i, void *u_ptr)
         "New inbound connection on index %d from %s:%d -> trying to use index %d",
         i, inet_ntoa(sin1.sin_addr), ntohs(sin1.sin_port), newidx);
   debug(DBG_GLOBAL, 10, "%d:LISTEN-POLLIN", i);
-  if(libsock_data->nfds < MAX_FDS) {
+  if(nfds < MAX_FDS) {
     fcntl(s1, F_SETFL, O_NONBLOCK);
     init_idx(newidx);
     libsock_data->ufds[newidx].fd = s1;
@@ -979,7 +980,7 @@ sock_connected_pollout(int i, void *u_ptr)
 }
 
 /**
- * Try to compact the libsock_data->nfds and cdata structures,
+ * Try to compact the nfds and cdata structures,
  * under the assumption that something got closed.
  * TODO: make this conditional.
  */
@@ -989,25 +990,25 @@ sock_remove_closed_fds(void)
 {
   int i;
 
-  for(i = libsock_data->nfds - 1; i >= 0; i--) {
+  for(i = nfds - 1; i >= 0; i--) {
     if(libsock_data->ufds[i].fd == -1) {
       libsock_data->ufds[i].events = 0;
-      if(libsock_data->ufds[i].fd == libsock_data->nfds - 1) {
-        libsock_data->nfds--;
+      if(libsock_data->ufds[i].fd == nfds - 1) {
+        nfds--;
       }
     }
   }
 #if 0
-  for(i = 0; i < libsock_data->nfds; i++) {
+  for(i = 0; i < nfds; i++) {
     if(libsock_data->ufds[i].fd == -1) {
-      while(libsock_data->ufds[libsock_data->nfds - 1].fd == -1 && libsock_data->nfds > 0 && i < libsock_data->nfds) {
-        libsock_data->nfds--;
+      while(libsock_data->ufds[nfds - 1].fd == -1 && nfds > 0 && i < nfds) {
+        nfds--;
       }
-      if(i < libsock_data->nfds) {
-        libsock_data->ufds[i].fd = libsock_data->ufds[libsock_data->nfds - 1].fd;
-        libsock_data->ufds[i].events = libsock_data->ufds[libsock_data->nfds - 1].events;
-        memcpy(&libsock_data->cdata[i], &libsock_data->cdata[libsock_data->nfds - 1], sizeof(libsock_data->cdata[0]));  /* also move the connection data */
-        libsock_data->nfds--;
+      if(i < nfds) {
+        libsock_data->ufds[i].fd = libsock_data->ufds[nfds - 1].fd;
+        libsock_data->ufds[i].events = libsock_data->ufds[nfds - 1].events;
+        memcpy(&libsock_data->cdata[i], &libsock_data->cdata[nfds - 1], sizeof(libsock_data->cdata[0]));  /* also move the connection data */
+        nfds--;
       }
     }
   }
@@ -1018,9 +1019,9 @@ int sock_one_cycle(int timeout, void *u_ptr) {
     int i;
     int nevents = 0;
 
-    debug(DBG_GLOBAL, 125, "poll(%d)", libsock_data->nfds);
-    poll(libsock_data->ufds, libsock_data->nfds, timeout);
-    for(i = 0; i < libsock_data->nfds; i++) {
+    debug(DBG_GLOBAL, 125, "poll(%d)", nfds);
+    poll(ufds, nfds, timeout);
+    for(i = 0; i < nfds; i++) {
       if(libsock_data->cdata[i].listener && libsock_data->cdata[i].is_udp == 0) {
         // TCP listener sockets 
         if(libsock_data->ufds[i].revents & POLLIN) {
@@ -1065,14 +1066,4 @@ int sock_one_cycle(int timeout, void *u_ptr) {
     return nevents;
 }
 
-void *libsock_init(void *data)
-{
-  //printf("Libsock init, orig data: %x\n", (unsigned int)data);
-  if(data == NULL) {
-    data = calloc(1, sizeof(*libsock_data));
-  }
-  //printf("Libsock init, data: %x\n", (unsigned int)data);
-  libsock_data = data;
-  return data;
-}
 
