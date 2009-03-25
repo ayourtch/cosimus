@@ -87,7 +87,7 @@ end
 function pretty (name, value, saved)
       saved = saved or {}       -- initial value
       local basicSerialize = function(o)
-        if type(o) == "number" then
+        if not (type(o) == "string") then
           return tostring(o)
         else   -- assume it is a string
           return string.format("%q", o)
@@ -95,7 +95,7 @@ function pretty (name, value, saved)
       end
 
       io.write(name, " = ")
-      if type(value) == "number" or type(value) == "string" then
+      if type(value) == "number" or type(value) == "string" or type(value) == "boolean" then
         io.write(basicSerialize(value), "\n")
       elseif type(value) == "table" then
         if saved[value] then    -- value already saved?

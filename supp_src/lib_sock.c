@@ -116,6 +116,7 @@ void
 dsend(int idx, dbuf_t * d)
 {
   debug(DBG_GLOBAL, 5, "pushing %d bytes for index %d", d->dsize, idx);
+  debug_dump(DBG_GLOBAL, 100, d->buf, d->dsize);
   lpush(&cdata[idx].xmit_list, d);
   ufds[idx].events |= POLLOUT;
   // Will be unlocked by the send mechanism

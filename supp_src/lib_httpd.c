@@ -183,54 +183,8 @@ do_l7_reset(int idx)
   ad->l7state = HTTP_L7_INIT;
 }
 
-/* 
- * The function that receives the control once the request is recognized 
- * Its responsibility is to prepare the response, queue the data, and return.
- */
-int
-http_handle_request(int idx)
-{
-  time_t global_time;
-  char timebuf[30];
-  int retcode;
-
-  dbuf_t *dh;
-  dbuf_t *deof;
-  dbuf_t *dad = cdata_get_appdata_dbuf(idx, http_appdata_sig);
-  appdata_http_t *ad;
-
-  if (dad) {
-    ad = http_dbuf_get_appdata(dad);
-  }
-
-  if(ad == NULL) {
-    debug(DBG_GLOBAL, 0, "Null appdata for HTTP, idx: %d", idx);
-  }
-
-  dh = dstrcpy("HTTP/1.1 200 OK\r\n");
-  dbuf_t *dd = dalloc(1024);
-
-  dstrcat(dh, "Connection: Close\r\n", -1);
-  global_time = time(NULL);
-  strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT",
-           gmtime(&global_time));
-  dprintf(dh, "Date: %s\r\n", timebuf);
-  unique_id++;
-  deof = dalloc(10);
-
-
-  if(ad->dispatcher) {
-    http_handler_func_t handler = ad->dispatcher(dad);
-    if(handler == NULL) {
-      debug(DBG_GLOBAL, 2, "Dispatcher found no action for path: '%s'", ad->http_path);
-    } else {
-      char *pc = get_symbol_name(handler);
-      debug(DBG_GLOBAL, 2, "[Idx %d] Dispatcher found action %s for path: '%s'", idx, pc, ad->http_path);
-      free(pc);
-      retcode = handler(dad, dh, dd);
-      debug(DBG_GLOBAL, 2, "Retcode[idx %d]: %d", idx, retcode);
-    }
-  } else if(strcmp(ad->http_path, "/") == 0) {
+#ifdef DEAD_CODE  
+  else if(strcmp(ad->http_path, "/") == 0) {
     dprintf(dd, "<h1>Test page</h1>");
     dprintf(dd, "<form method='post' action='postaction' enctype='multipart/form-data'><input type='text' name=editor><input type=file name=txt><input type='submit'></form>");
     
@@ -278,10 +232,73 @@ http_handle_request(int idx)
     dprintf(dh, "Content-Length: %d\r\n", dd->dsize);
 */
   //dprintf(dh, "Transfer-Encoding: chunked\r\n");
+
+#endif // DEAD_CODE
+
+/* 
+ * The function that receives the control once the request is recognized 
+ * Its responsibility is to prepare the response, queue the data, and return.
+ */
+int
+http_handle_request(int idx)
+{
+  time_t global_time;
+  char timebuf[30];
+  int retcode;
+
+  dbuf_t *dh;
+  dbuf_t *deof;
+  dbuf_t *dad = cdata_get_appdata_dbuf(idx, http_appdata_sig);
+  appdata_http_t *ad;
+
+  if (dad) {
+    ad = http_dbuf_get_appdata(dad);
+  }
+
+  if(ad == NULL) {
+    debug(DBG_GLOBAL, 0, "Null appdata for HTTP, idx: %d", idx);
+  }
+
+  dh = dalloc(1024);
+  dbuf_t *dd = dalloc(1024);
+
+  unique_id++;
+  deof = dalloc(10);
+
+
+  if(ad->dispatcher) {
+    http_handler_func_t handler = ad->dispatcher(dad);
+    if(handler == NULL) {
+      debug(DBG_GLOBAL, 2, "Dispatcher found no action for path: '%s'", ad->http_path);
+    } else {
+      char *pc = get_symbol_name(handler);
+      debug(DBG_GLOBAL, 2, "[Idx %d] Dispatcher found action %s for path: '%s'", idx, pc, ad->http_path);
+      free(pc);
+      retcode = handler(dad, dh, dd);
+      if((dh->dsize < 6) || memcmp(dh->buf, "HTTP/1", 6)) {
+        dbuf_t *dh0 = dalloc(dh->size);
+        dstrcat(dh0, "HTTP/1.1 200 OK\r\n", -1);
+        dstrcat(dh0, "Connection: Close\r\n", -1);
+        global_time = time(NULL);
+        strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT",
+           gmtime(&global_time));
+        // dprintf(dh0, "Date: %s\r\n", timebuf);
+        dprintf(dh0, "Date: '%s'", timebuf);
+	dmemcat(dh0, dh->buf, dh->dsize);
+	dh->dsize = 0;
+	dmemcat(dh, dh0->buf, dh0->dsize);
+	dunlock(dh0);
+      }
+      debug(DBG_GLOBAL, 2, "Retcode[idx %d]: %d", idx, retcode);
+    }
+  } else {
+    dprintf(dh, "HTTP/1.0 400 Not Found\r\n");
+  }
   debug(DBG_GLOBAL, 2, "index %d , Content-length: %d\n", idx, dd->dsize);
   dstrcat(dh, "\r\n", -1);
   dconcat(dh, dd);
   dunlock(dd);
+  debug_dump(DBG_GLOBAL, 100, dh->buf, dh->dsize);
 
   // Now hand it out to transmitter 
   dsend(idx, dh);
