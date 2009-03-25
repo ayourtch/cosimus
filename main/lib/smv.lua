@@ -509,8 +509,20 @@ function smv_asset_upload_request(sess, d)
   newasset.Tempfile = Tempfile
   newasset.StoreLocal = StoreLocal
   newasset.AssetData = AssetData
-  fmv.AssetUploadCompleteHeader(p)
-  fmv.AssetUploadComplete_AssetBlock(p, uuid, Type, 1)
+  if (#AssetData > 0) then
+    fmv.AssetUploadCompleteHeader(p)
+    fmv.AssetUploadComplete_AssetBlock(p, uuid, Type, 1)
+  else 
+    fmv.RequestXferHeader(p)
+    fmv.RequestXfer_XferID(p, 
+      string.rep("\0", 8), -- XferID
+      "blah", --  FileName
+      "", -- Path
+      Tempfile, -- DeleteOnCompletion
+      false, -- UseBigPackets
+      uuid, -- VFileID
+      Type) -- VFileType
+  end
   smv_send_then_unlock(sess, p)
   -- ]]
 end
@@ -601,10 +613,11 @@ function smv_fetch_inventory_descendents(sess, d)
   local inv = smv_state.inventory[AgentID]
   local total_folder_descendents = 0
   local total_item_descendents = 0
+  print ("Fetch Descendents for ", FolderID, FetchFolders, FetchItems, SortOrder)
 
   fmv.InventoryDescendentsHeader(p)
   -- folder descendents will go here
-  if inv then
+  if inv and FetchFolders then
     for item_id, item in pairs(inv) do
       if item.IsFolder then
         fmv.InventoryDescendents_FolderDataBlock(p, total_folder_descendents,
@@ -620,7 +633,7 @@ function smv_fetch_inventory_descendents(sess, d)
   print("Total Folder Descendents:", total_folder_descendents)
 
 
-  if inv then
+  if inv and FetchItems then
     for item_id, item in pairs(inv) do
       if not item.IsFolder then
         fmv.InventoryDescendents_ItemDataBlock(p, total_item_descendents, 
@@ -649,7 +662,7 @@ function smv_fetch_inventory_descendents(sess, d)
 	if (total_item_descendents > 10) then
           fmv.InventoryDescendents_ItemDataBlockSize(p, total_item_descendents)
           fmv.InventoryDescendents_AgentData(p, AgentID, FolderID, OwnerID, 
-              0, -- Version
+              1, -- Version
               total_folder_descendents + total_item_descendents) -- Descendents
           smv_send_then_unlock(sess, p)
 	  print("Sent one descendants packet")
@@ -664,7 +677,7 @@ function smv_fetch_inventory_descendents(sess, d)
   end
   fmv.InventoryDescendents_ItemDataBlockSize(p, total_item_descendents)
   fmv.InventoryDescendents_AgentData(p, AgentID, FolderID, OwnerID, 
-      0, -- Version
+      1, -- Version
       total_folder_descendents + total_item_descendents) -- Descendents
   
   print("Total Item Descendents:", total_item_descendents)
@@ -674,7 +687,7 @@ function smv_fetch_inventory_descendents(sess, d)
   fmv.InventoryDescendents_FolderDataBlockSize(p, 0)
   fmv.InventoryDescendents_ItemDataBlockSize(p, 0)
   fmv.InventoryDescendents_AgentData(p, AgentID, FolderID, OwnerID, 
-     0, -- Version
+     1, -- Version
      0) -- Descendents
   smv_send_then_unlock(sess, p)
 end
