@@ -119,6 +119,8 @@ void dsend(int idx, dbuf_t * d);
 void dprintf(dbuf_t * d, char *fmt, ...);
 
 dbuf_t *dstrcpy(const char *str);
+dbuf_t *dsubstrcpy(dbuf_t *d, int start, int howmany);
+
 
 int dconcat(dbuf_t * target, dbuf_t * source);
 int dmemscan(dbuf_t * d, char c, int start);

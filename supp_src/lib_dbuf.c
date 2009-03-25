@@ -405,6 +405,17 @@ dstrcpy(const char *str)
   return temp;
 }
 
+dbuf_t *
+dsubstrcpy(dbuf_t *d, int start, int howmany)
+{
+  dbuf_t *temp = NULL;
+  if ((start < d->dsize) && (start + howmany <= d->dsize)) {
+    temp = dalloc(howmany);
+    memcpy(temp->buf, &d->buf[start], howmany);
+  }
+  return temp;
+}
+
 /**
  * Concatenate a chunk of memory of a specified size
  * to the existing dbuf.
