@@ -273,12 +273,12 @@ function smv_agent_wearables_update(sess, d)
   print("Wearables update for agent ", AgentID, SessionID)
   
   fmv.AgentWearablesUpdateHeader(p)
-  fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 23456)
+  fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 0)
   if inv then
     for uuid, item in pairs(inv) do
       if item.IsWorn then
         fmv.AgentWearablesUpdate_WearableDataBlock(p, total_wearables, 
-          uuid, -- ItemID
+          AgentID, -- ItemID
           item.AssetID, -- AssetID
           item.WearableType -- WearableType
         )
