@@ -7,4 +7,6 @@
 
 #include "gen_fmv.h"
 
+LUA_API int luaopen_libfmv (lua_State *L);
+
 #endif

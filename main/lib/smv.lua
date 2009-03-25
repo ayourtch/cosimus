@@ -1,6 +1,6 @@
-require 'libfmv'
-require 'libsupp'
-require 'libpktsmv'
+-- require 'libfmv'
+--require 'libsupp'
+-- require 'libpktsmv'
 require 'serialize'
 
 smv_state = {}
@@ -760,3 +760,7 @@ smv.serialize = function()
   print(s)
   return s
 end
+
+smv.start_listener("0.0.0.0", 9000)
+print("Lua SMV startup complete!\n")
+

@@ -1,5 +1,5 @@
 --package.cpath="../../lib/?.so"
-require 'libsupp'
+--require 'libsupp'
 
 
 
