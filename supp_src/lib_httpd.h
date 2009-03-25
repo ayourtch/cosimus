@@ -15,6 +15,8 @@ enum {
   HTTP_L7_READ_POST_DATA,
 };
 
+extern char *http_appdata_sig;
+
 struct appdata_http_t_tag;
 
 typedef int (*http_handler_func_t)(dbuf_t *dad, dbuf_t *dh, dbuf_t *dd);
@@ -31,6 +33,8 @@ typedef struct appdata_http_t_tag {
   dbuf_t *post_content_buf;
   uint32_t post_content_got_length;
   http_dispatcher_func_t dispatcher;
+  char *lua_handler_name;
+  void *L; // Lua state, if needed
 } appdata_http_t;
 
 dbuf_t *alloc_appdata_http(int idx);

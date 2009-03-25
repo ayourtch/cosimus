@@ -157,14 +157,6 @@ lua_fn_run_cycles(lua_State *L) {
   return 1;
 }
 
-static int
-lua_fn_http_start_listener(lua_State *L)
-{
-  const char *addr = luaL_checkstring(L, 1);
-  int port = luaL_checkint(L, 2);
-  http_start_listener((void *)addr, port, NULL);
-  return 0;
-}
 
 static int
 lua_fn_libsupp_init(lua_State *L)
@@ -189,6 +181,125 @@ lua_fn_get_file_mtime(lua_State *L)
   return 1;
 }
 
+static int 
+lua_fn_get_http_data(lua_State *L)
+{
+  int n = lua_gettop(L);
+  char *key;
+  dbuf_t *d;
+  appdata_http_t *appdata;
+  if(n == 2 && lua_isuserdata(L, -2) ) {
+    d = (void *)lua_touserdata(L, -2);
+    key = (void*) lua_tostring(L, -1);
+    if( (appdata = http_dbuf_get_appdata(d)) ) {
+      if(strcmp(key, "querystring") == 0) {
+        lua_pushstring(L, appdata->http_querystring);
+      } else if(strcmp(key, "referer") == 0) {
+        lua_pushstring(L, appdata->http_referer);
+      } else if(strcmp(key, "http_11") == 0) {
+        lua_pushnumber(L, appdata->http_11);
+      } else if(strcmp(key, "method") == 0) {
+        lua_pushnil(L);
+      } else if(strcmp(key, "post_content_length") == 0) {
+        lua_pushnumber(L, appdata->post_content_length);
+      } else if(strcmp(key, "post_data_length") == 0) {
+        lua_pushnumber(L, appdata->post_content_got_length);
+      } else if(strcmp(key, "post_data") == 0) {
+        if (appdata->post_content_buf) {
+          lua_pushlstring(L, appdata->post_content_buf->buf, appdata->post_content_buf->dsize);
+        } else {
+          lua_pushnil(L);
+        }
+      }
+    } else {
+      lua_pushstring(L, "Wrong kind of userdata supplied");
+      lua_error(L);
+    }
+  } else {
+    lua_pushstring(L, "Need two arguments to get http data: userdata and field name");
+    lua_error(L);
+  }
+  return 1; /* single result */
+}
+
+static int lua_http_handler(dbuf_t *dad, dbuf_t *dh, dbuf_t *dd)
+{
+  lua_State *L;
+  char *body;
+  size_t body_len;
+  char *header;
+  size_t header_len;
+  int err;
+  appdata_http_t *ad = http_dbuf_get_appdata(dad);
+
+  if(ad) {
+    L = ad->L;
+    lua_getglobal(L, ad->lua_handler_name);
+    lua_pushstring(L, ad->http_path);
+    lua_pushlightuserdata(L, dad);
+    lua_pushlightuserdata(L, dh);
+    lua_pushlightuserdata(L, dd);
+    printf("Lua handler\n");
+    err = lua_pcall(L, 4, 2, 0);
+    if(err) {
+      debug(DBG_GLOBAL, 0, "Lua error: %s", lua_tostring(L,-1));
+      lua_pop(L, 1);
+    } else {
+      /* get the result */
+      body = (void*) lua_tolstring(L, -1, &body_len);
+      header = (void*) lua_tolstring(L, -2, &header_len);
+      dmemcat(dd, body, body_len);
+      dmemcat(dh, header, header_len);
+      dprintf(dh, "\r\n");
+      lua_pop(L, 1);
+      lua_pop(L, 1);
+      debug(DBG_GLOBAL, 3, "Explicitly returned %d header chars, %d body chars\n", header_len, body_len);
+    }
+  } else {
+    debug(DBG_GLOBAL, 0, "Wrong http appdata supplied to handler");
+  }
+
+  return 0;
+}
+
+
+http_handler_func_t lua_http_dispatcher(dbuf_t *dad)
+{
+  appdata_http_t *ad = http_dbuf_get_appdata(dad);
+  if (ad) {
+    printf("Lua dispatcher called for URI: %s\n", ad->http_path);
+    return lua_http_handler;
+  } else {
+    return NULL;
+  }
+}
+
+
+int http_start_listener_lua(char *addr, int port, http_dispatcher_func_t dispatcher, lua_State *L, char *lua_handler_name)
+{
+  int idx = http_start_listener(addr, port, dispatcher);
+  if (idx >= 0) {
+    dbuf_t *dp = cdata_get_appdata_dbuf(idx, http_appdata_sig);
+    appdata_http_t *ad = http_dbuf_get_appdata(dp);
+    ad->lua_handler_name = strdup(lua_handler_name);
+    ad->L = L;
+  }
+  return idx; 
+}
+
+static int
+lua_fn_http_start_listener(lua_State *L)
+{
+  char *addr = (void *)luaL_checkstring(L, 1);
+  int port = luaL_checkint(L, 2);
+  char *handler_name = (void *) luaL_checkstring(L, 3);
+  int result = (0 <= http_start_listener_lua(addr, port, lua_http_dispatcher, L, handler_name));
+  lua_pushboolean(L, result);
+  return 1;
+}
+
+
+
 
 static const luaL_reg su_lib[] = {
   {"set_debug_level", lua_fn_set_debug_level },
@@ -208,6 +319,7 @@ static const luaL_reg su_lib[] = {
   { "http_start_listener", lua_fn_http_start_listener },
   { "libsupp_init", lua_fn_libsupp_init },
   { "get_file_mtime", lua_fn_get_file_mtime },
+  { "get_http_data", lua_fn_get_http_data },
 
   {NULL, NULL}
 };

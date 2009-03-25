@@ -44,7 +44,7 @@ char *http_header(hashmap_t hashofheaders, char *hname) {
 }
 */
 
-static char *http_appdata_sig = "http_appdata_sig";
+char *http_appdata_sig = "http_appdata_sig";
 
 http_handler_func_t default_http_dispatcher(appdata_http_t *ad)
 {
@@ -72,6 +72,8 @@ int http_newconn(int idx, int parent, void *u_ptr)
 
   ad->dispatcher = adp->dispatcher;
   ad->l7state = HTTP_L7_INIT;
+  ad->L = adp->L;
+  ad->lua_handler_name = adp->lua_handler_name;
   debug(DBG_GLOBAL, 1, "Index %d apptype set to HTTP", idx);
   return 1;
 }
@@ -100,10 +102,8 @@ int http_start_listener(char *addr, int port, http_dispatcher_func_t dispatcher)
   } else {
     ad->dispatcher = NULL;
   }
-  return 1;
+  return idx;
 }
-
-
 
 void
 dhtml_redirect(dbuf_t * dd, char *url)
