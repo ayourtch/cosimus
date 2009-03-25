@@ -9,12 +9,33 @@
 #include "libsupp.h"
 
 
+int lua_traceback (lua_State *L) {
+  if (!lua_isstring(L, 1))  /* 'message' not a string? */
+    return 1;  /* keep it intact */
+  lua_getfield(L, LUA_GLOBALSINDEX, "debug");
+  if (!lua_istable(L, -1)) {
+    lua_pop(L, 1);
+    return 1;
+  }
+  lua_getfield(L, -1, "traceback");
+  if (!lua_isfunction(L, -1)) {
+    lua_pop(L, 2);
+    return 1;
+  }
+  lua_pushvalue(L, 1);  /* pass error message */
+  lua_pushinteger(L, 2);  /* skip this function and traceback */
+  lua_call(L, 2, 1);  /* call debug.traceback */
+  return 1;
+}
+
+
 int lua_pcall_with_debug_ex(lua_State *L, int nargs, int nresults, int dbgtype, int level, char *file, int lineno)
 {
   int err = lua_pcall(L, nargs, nresults, 0);
   if(err != 0) {
     debug(dbgtype, level, "Lua error while performing lua_pcall at %s:%d: %s",
-         file, lineno, lua_tostring(L, 1));
+         file, lineno, lua_tostring(L, -1));
+    lua_pop(L, 1);
   }
   return err;
 }
@@ -142,25 +163,35 @@ lua_fn_sock_send_data(lua_State *L) {
   return 1;
 }
 
+static int 
+lua_fn_sock_write_data(lua_State *L) {
+  int idx = luaL_checkint(L, 1);
+  dbuf_t *d = lua_checkdbuf(L, 2);
+  int nwrote = sock_write_data(idx, d);
+  lua_pushinteger(L, nwrote);
+  return 1;
+}
+
 char *tcp_connect_sig = "tcp_connect_outgoing";
 
 // Common event handler that calls Lua for outgoing TCP connection events
 static int
-tcp_connect_handler_call(int idx, char *event, dbuf_t *data)
+tcp_connect_handler_call(int idx, int event, dbuf_t *data)
 {
   appdata_lua_outgoing_tcp_t *ad;
   dbuf_t *d = cdata_get_appdata_dbuf(idx, tcp_connect_sig);
   lua_State *L;
   int result = 0;
   if (d) {
+    // int err;
     ad = (void*) d->buf;
     L = ad->L;
     lua_getglobal(L, ad->lua_handler_name);
     lua_pushnumber(L, idx);
-    lua_pushstring(L, event);
+    lua_pushnumber(L, event);
     lua_pushlightuserdata(L, data);
     lua_pcall_with_debug(L, 3, 1, 0, 0);
-    result = lua_tonumber(L, 1);
+    result = lua_tonumber(L, -1);
     lua_pop(L, 1);
   } else {
     debug(0, 0, "TCP connect handler idx %d, corrupt or absent appdata", idx);
@@ -172,14 +203,13 @@ tcp_connect_handler_call(int idx, char *event, dbuf_t *data)
 static void 
 ev_tcp_connect_channel_ready(int idx, void *u_ptr)
 {
-  debug(0, 0, "channel ready!");
-  tcp_connect_handler_call(idx, "channel_ready", NULL);
+  tcp_connect_handler_call(idx, SOCK_EVENT_CHANNEL_READY, NULL);
 }
 
 static int
 ev_tcp_connect_read(int idx, dbuf_t *d, void *u_ptr)
 {
-  return tcp_connect_handler_call(idx, "read", d);
+  return tcp_connect_handler_call(idx, SOCK_EVENT_READ, d);
 }
 
 static int
@@ -187,7 +217,7 @@ ev_tcp_connect_closed(int idx, void *u_ptr)
 {
   appdata_lua_outgoing_tcp_t *ad;
   dbuf_t *d = cdata_get_appdata_dbuf(idx, tcp_connect_sig);
-  int ret = tcp_connect_handler_call(idx, "closed", NULL);
+  int ret = tcp_connect_handler_call(idx, SOCK_EVENT_CLOSED, NULL);
   if (d) {
     ad = (void*) d->buf;
     free(ad->lua_handler_name);
@@ -198,7 +228,7 @@ ev_tcp_connect_closed(int idx, void *u_ptr)
 static int
 ev_tcp_newconn(int idx, int parent, void *u_ptr)
 {
-  return tcp_connect_handler_call(idx, "newconn", NULL);
+  return tcp_connect_handler_call(idx, SOCK_EVENT_NEWCONN, NULL);
 }
 
 static int 
@@ -223,8 +253,7 @@ lua_fn_sock_tcp_connect(lua_State *L) {
       h->ev_read = ev_tcp_connect_read;
       h->ev_closed = ev_tcp_connect_closed;
       h->ev_newconn = ev_tcp_newconn;
-      debug(0, 0, "Set the new socket with handler: %s", lua_handler_name);
-
+      debug(0, 10, "Create the new outgoing idx %d with handler: %s", idx, lua_handler_name);
       lua_pushnumber(L, idx);
     } else {
       error = 1;
@@ -233,6 +262,7 @@ lua_fn_sock_tcp_connect(lua_State *L) {
     error = 1;
   }
   if (error) {
+    debug(0, 0, "Error has happened!");
     free(lua_handler_name);
     lua_pushnil(L);
   }
@@ -412,7 +442,8 @@ static const luaL_reg su_lib[] = {
 
   {"cdata_get_remote4", lua_fn_cdata_get_remote4 },
   {"cdata_check_remote4", lua_fn_cdata_check_remote4 },
-  {"sock_send_data", lua_fn_sock_send_data },
+  { "sock_send_data", lua_fn_sock_send_data },
+  { "sock_write_data", lua_fn_sock_write_data },
   { "sock_tcp_connect", lua_fn_sock_tcp_connect },
   { "run_cycles", lua_fn_run_cycles },
   { "http_start_listener", lua_fn_http_start_listener },

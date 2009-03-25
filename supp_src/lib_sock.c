@@ -36,6 +36,9 @@
 #include <assert.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <unistd.h>
 
 /**
  * @defgroup socket Socket handling
@@ -456,6 +459,25 @@ close_idx(int idx, void *u_ptr)
 }
 
 
+/**
+ * get a new free index
+ */
+int
+sock_get_free_index(int minimum)
+{
+  int i;
+
+  for(i = minimum; i < nfds; i++) {
+    if(ufds[i].fd == -1) {
+      return i;
+    }
+  }
+  i = nfds;
+  nfds++;
+  return i;
+}
+
+
 /** 
  * initiate the connect to a given remote addr, return the index 
  */
@@ -495,19 +517,18 @@ initiate_connect(char *addr, int port)
     return -1;
   } else {
     if(errno == EINPROGRESS) {
-      init_idx(nfds);
-      ufds[nfds].fd = s;
+      idx = sock_get_free_index(0);
+      init_idx(idx);
+      ufds[idx].fd = s;
       /*
          the socket connection once completed, appears to cause the POLLIN rather than pollout event 
        */
-      ufds[nfds].events |= POLLOUT;     /* we want to know when we get connected */
-      cdata[nfds].connected = 0;        /* we did not connect yet */
-      cdata[nfds].inbound = 0;  /* outbound connection */
-      idx = nfds;
+      ufds[idx].events |= POLLOUT;     /* we want to know when we get connected */
+      cdata[idx].connected = 0;        /* we did not connect yet */
+      cdata[idx].inbound = 0;  /* outbound connection */
       debug(DBG_GLOBAL, 1,
             "Outbound connection in progress for index %d to %s:%d",
             idx, addr, port);
-      nfds++;
 
     } else {
       debug(DBG_GLOBAL, 1,
@@ -517,7 +538,7 @@ initiate_connect(char *addr, int port)
     }
 
   }
-  return 0;
+  return idx;
 }
 
 
@@ -608,25 +629,6 @@ create_udp_socket()
   setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
   return s;
 }
-
-/**
- * get a new free index
- */
-int
-sock_get_free_index(int minimum)
-{
-  int i;
-
-  for(i = minimum; i < nfds; i++) {
-    if(ufds[i].fd == -1) {
-      return i;
-    }
-  }
-  i = nfds;
-  nfds++;
-  return i;
-}
-
 
 /**
  * Bind the socket s to local address and port
@@ -945,6 +947,24 @@ sock_send_data(int i, dbuf_t * d)
   return nwrote;
 }
 
+/* try to send the data with queueing, if needed */
+int
+sock_write_data(int i, dbuf_t *d)
+{
+  int nwrote = sock_send_data(i, d);
+  if (nwrote < d->dsize) {
+    if (nwrote <= 0) {
+      /* FIXME: this will cause a problem in case of an error, methinks */
+      dsend(i, d);
+    } else {
+      dbuf_t *d1 = dsubstrcpy(d, nwrote, d->dsize - nwrote);
+      dsend(i, d1);
+      dunlock(d);
+    }
+  }
+  return nwrote;
+}
+
 /**
  * POLLOUT on the connected socket or on UDP socket
  *
@@ -1046,10 +1066,20 @@ sock_remove_closed_fds(void)
 int sock_one_cycle(int timeout, void *u_ptr) {
     int i;
     int nevents = 0;
+    int nsocks = 0;
+    int nfdscheck = nfds;
 
     debug(DBG_GLOBAL, 125, "poll(%d)", nfds);
-    poll(ufds, nfds, timeout);
-    for(i = 0; i < nfds; i++) {
+    nsocks = poll(ufds, nfdscheck, timeout);
+    if (nsocks == -1) {
+      struct rlimit rlim;
+      getrlimit(RLIMIT_NOFILE, &rlim);
+      nfdscheck = rlim.rlim_cur-1;
+      debug(DBG_GLOBAL, 0, "Error while poll: %s, rlimit on file#: %d(max %d)", 
+        strerror(errno), rlim.rlim_cur, rlim.rlim_max, nfdscheck);
+      return -1;
+    }
+    for(i = 0; i < nfdscheck; i++) {
       if(cdata[i].listener && cdata[i].is_udp == 0) {
         // TCP listener sockets 
         if(ufds[i].revents & POLLIN) {

@@ -6,6 +6,7 @@ RM= rm -f
 CFLAGS = -Wall -Werror -I../supp_src -I../fmv_src -I../lua/lua-5.1.4/src -I../pktsmv_src
 LDFLAGS = -rdynamic 
 CFLAGS += -g 
+# -pg
 LUA=../lua/lua-5.1.4/src/lua
 LUA_LIBS=-L../lua/lua-5.1.4/src -llua
 

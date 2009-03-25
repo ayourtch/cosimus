@@ -43,5 +43,6 @@ int main(int argc, char *argv[])
     lua_pcall_with_debug(L, 0, 0, 0, 0);
   }
   lua_close(L);
+  exit(1);
   return 0;
 }

@@ -45,6 +45,13 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+enum {
+  SOCK_EVENT_CHANNEL_READY = 1,
+  SOCK_EVENT_READ = 2,
+  SOCK_EVENT_CLOSED = 3,
+  SOCK_EVENT_NEWCONN = 4
+};
+
 
 /**** Event handler function pointer types */
 typedef void (*sock_ev_channel_ready_t)(int idx, void *u_ptr);
@@ -78,6 +85,9 @@ int cdata_get_remote4(int idx, uint32_t *addr, uint16_t *port);
 int cdata_check_remote4(int idx, uint32_t addr, uint16_t port);
 // immediate send. Use only for the UDP sockets, preferrably. i == idx
 int sock_send_data(int i, dbuf_t * d);
+
+// immediate send, if can not send then enqueues. Returns the number of bytes immediately sent
+int sock_write_data(int i, dbuf_t * d);
 
 
 
