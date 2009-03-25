@@ -43,7 +43,7 @@
 
 /*@{*/
 
-#ifdef XXXXXX
+
 struct pollfd ufds[MAX_FDS];
 conndata_t cdata[MAX_FDS];
 int nfds = 0;
@@ -53,9 +53,6 @@ int nclients = 0;               /* number of active inbound connections */
 long nconnections = 0;          /* counter for incoming connections */
 
 int biggest_udp_idx = 0;        /* the biggest index of the UDP sockets */
-#endif
-
-lib_sock_runtime_data_t *libsock_data = NULL;
 
 /* L5 stuff */
 
