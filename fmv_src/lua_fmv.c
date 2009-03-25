@@ -172,8 +172,8 @@ static int
 lua_fn_F32_UDP(lua_State *L) {
   float f = luaL_checknumber(L, 1);
   int offs = 0;
-  u8t bytes[4];
-  F32_UDP(f, bytes, &offs);
+  u8t bytes[5];
+  F32_UDP(f, bytes, &offs, 5);
   lua_pushlstring(L, bytes, 4);
   return 1;
 }
@@ -195,7 +195,7 @@ lua_fn_uuid_from_bytes(lua_State *L) {
   if(sz < sizeof(uuid_t)) {
     luaL_error(L, "Expected UUID (%d bytes string) as arg %d, got %d bytes", sizeof(uuid_t), 1, sz);
   }
-  UDP_LLUUID(&uuid, (void *)s, &offs);
+  UDP_LLUUID(&uuid, (void *)s, &offs, sz);
   lua_pushx_uuid(L, &uuid);
   return 1;
 }
