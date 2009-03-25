@@ -1,4 +1,8 @@
 CC=gcc
+AR= ar rcu
+RANLIB= ranlib
+RM= rm -f
+
 CFLAGS = -Wall -Werror -I../supp_src -I../fmv_src -I../lua/lua-5.1.4/src
 LDFLAGS = -rdynamic 
 CFLAGS += -g 

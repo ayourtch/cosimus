@@ -1,7 +1,7 @@
 include ../Makefile.inc
 CFLAGS += -I../supp_src
 
-all: libfmv.so
+all: libfmv.a
 
 gen_fmv.h: message_template.msg parse-ng.lua
 	$(LUA) parse-ng.lua header message_template.msg >gen_fmv.h
@@ -19,13 +19,12 @@ lua_fmv.o: lua_fmv.c lua_fmv.h
 gen_fmv.o: gen_fmv.h gen_fmv.c sta_fmv.h
 	$(CC) -c $(CFLAGS) gen_fmv.c
 
-libfmv.so: gen_fmv.o sta_fmv.o lua_fmv.o
-	$(CC) -shared -Wl,-soname,libfmv.so -o $@ $^ $(LIBS)
-	cp $@ ../lib/$@.tmp
-	mv ../lib/$@.tmp ../lib/$@
+libfmv.a: gen_fmv.o sta_fmv.o lua_fmv.o
+	$(AR) $@ $?
+	$(RANLIB) $@
 
 clean:
 	rm -f gen_fmv.[ch]
 	rm -f *.o
-	rm -f libfmv.so
+	rm -f libfmv.a
 

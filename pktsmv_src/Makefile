@@ -1,12 +1,9 @@
 include ../Makefile.inc
 
-all: libpktsmv.so
+all: libpktsmv.a
 
-libpktsmv.so: pktsmv.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,$@ -o $@ $^ $(LIBS) -lfmv
-	cp $@ ../lib/$@.tmp
-	mv ../lib/$@.tmp ../lib/$@
-
-
+libpktsmv.a: pktsmv.o
+	$(AR) $@ $?
+	$(RANLIB) $@
 clean:
-	rm -f *.o libpktsmv.so
+	$(RM) *.o libpktsmv.a
