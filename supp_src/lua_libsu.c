@@ -70,6 +70,14 @@ static int lua_fn_dlock(lua_State *L)
   return 1;
 }
 
+static int lua_fn_dcheck(lua_State *L)
+{
+  dbuf_t *d = lua_checkdbuf(L, 1);
+  if(d->dsize > d->size) {
+    luaL_error(L, "dsize > size");
+  }
+  return 0;
+}
 static int lua_fn_dstr(lua_State *L)
 {
   int len;
@@ -184,6 +192,7 @@ static const luaL_reg su_lib[] = {
   {"dalloc", lua_fn_dalloc },
   {"dlock", lua_fn_dlock },
   {"dunlock", lua_fn_dunlock },
+  {"dcheck", lua_fn_dcheck },
   {"dstr", lua_fn_dstr },
   {"dgetstr", lua_fn_dgetstr },
   {"dstrcat", lua_fn_dstrcat },

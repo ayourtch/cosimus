@@ -287,6 +287,12 @@ dunlock(void *ptr)
     d->lock--;
     debug(DBG_MEMORY, 10, "dunlock of %x, new lock count is %d", d, d->lock);
     assert(d->lock >= 0);
+    if (d->dsize > d->size) {
+      debug(0,0, "dsize > size, impossible. Memory corruption has/will occur. dumping the block and quitting");
+      debug_dump(0,0, d->buf, d->size);
+      assert(0 == "Buffer corruption");
+    }
+    
     if(d->lock == 0) {
       if(d->destructor != NULL) {
         debug(DBG_MEMORY, 10, "dunlock calling destructor %x", d->destructor);

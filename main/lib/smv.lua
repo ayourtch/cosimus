@@ -43,6 +43,8 @@ function smv_send_then_unlock(sess, p)
   -- todo - checking against stale sessions
   su.sock_send_data(sess.idx, p1)
   -- su.print_dbuf(0, 0, p)
+  su.dcheck(p)
+  su.dcheck(p1)
   fmv.packet_unlock(p)
   fmv.packet_unlock(p1)
 end
@@ -639,7 +641,7 @@ function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
   local remote_str = remote_addr .. ':' .. tostring(remote_port)
-  print("Got packet")
+  -- print("Got packet")
   if gid == "UseCircuitCode" then
     local circuit_code, session_id, user_id = fmv.Get_UseCircuitCode_CircuitCode(d)
     print("Circuit code: " .. tostring(circuit_code))

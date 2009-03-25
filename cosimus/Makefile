@@ -1,6 +1,7 @@
 include ../Makefile.inc
 
-all: cosimus
+all: clean cosimus
+
 
 cosimus: cosimus.o
 	$(CC) -o $@ $? $(LIBS) $(LUA_LIBS) $(APP_LIBS)

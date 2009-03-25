@@ -305,7 +305,7 @@ dbuf_t *MakeLayerPatches(uint16_t *patch_set, uint16_t *patch_set_remaining)
     for(py=0;py<16 && !full;py++) {
       if (patch_set_remaining[py] & (1 << px)) {
         CreatePatch(bytes, my_height_map, px, py);
-        if (bytes->dsize > 1000) {
+        if (bytes->dsize > 600) {
           full = 1;
         } 
         if(patch_set_remaining) {
@@ -377,8 +377,6 @@ static int smv_packet(int idx, dbuf_t *d0, void *ptr) {
   int err;
   dbuf_t *d;
   lua_State *L = ptr;
-
-  printf("Received packet\n");
 
   d = MaybeZeroDecodePacket(d0);
   lua_getglobal(L, "smv_packet");

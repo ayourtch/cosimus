@@ -15,7 +15,7 @@
 int main(int argc, char *argv[]) 
 {
   lua_State *L;
-  set_debug_level(DBG_GLOBAL, 100);
+  //set_debug_level(DBG_GLOBAL, 100);
   debug(0,0, "Hello there, sizeof of uuid_t: %d!", sizeof(uuid_t));
   http_start_listener("127.0.0.1", 12346, NULL);
   

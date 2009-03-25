@@ -907,17 +907,20 @@ dbuf_t *ZeroDecodePacket(dbuf_t *d)
         if (src[i] == 0x00) {
             for (j = 0; j < src[i + 1]; j++) {
                 dest[zerolen++] = 0x00;
+                assert(zerolen < d1->size);
             }
 
             i++;
         } else {
             dest[zerolen++] = src[i];
+            assert(zerolen < d1->size);
         }
     }
 
     /* Copy appended ACKs */
     for (; i < srclen; i++) {
         dest[zerolen++] = src[i];
+        assert(zerolen < d1->size);
     }
 
     d1->dsize = zerolen;
