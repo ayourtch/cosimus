@@ -12,6 +12,8 @@ smv_state.transactions = {}
 smv_state.sessions = {}
 smv_state.sess_id_by_remote = {}
 
+require 'luastate'
+
 zero_uuid = "00000000-0000-0000-0000-000000000000"
 
 function cr()
@@ -37,14 +39,23 @@ end
 -- send the new packet d towards the session sess user
 function smv_send_then_unlock(sess, p)
   local p1
+  local dsize, size
   smv_next_seq(sess, p)
   fmv.FinalizePacketLength(p)
   p1 = fmv.MaybeZeroEncodePacket(p)
   -- todo - checking against stale sessions
   su.sock_send_data(sess.idx, p1)
   -- su.print_dbuf(0, 0, p)
-  su.dcheck(p)
-  su.dcheck(p1)
+  dsize, size = su.dcheck(p)
+  if dsize then
+    print("p Dsize", dsize, " > ", size)
+    print(fmv.global_id_str(p))
+  end
+  dsize, size = su.dcheck(p1)
+  if dsize then
+    print("p1 Dsize", dsize, " > ", size)
+    print(fmv.global_id_str(p1))
+  end
   fmv.packet_unlock(p)
   fmv.packet_unlock(p1)
 end
@@ -124,6 +135,7 @@ function smv_send_agent_movement_complete(sess)
      smv_get_region_handle(), -- RegionHandle
      0 -- Timestamp
      )
+  fmv.AgentMovementComplete_SimData(p, "Cosimus v0.01")
   smv_send_then_unlock(sess, p)
 end
 
@@ -272,22 +284,49 @@ function smv_agent_wearables_update(sess, d)
   end
   local inv = smv_state.inventory[AgentID]
   local total_wearables = 0
+  local wearables = {}
   print("Wearables update for agent ", AgentID, SessionID)
+  for i=0,19 do
+    wearables[i] = nil
+  end
   
   fmv.AgentWearablesUpdateHeader(p)
   fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 0)
   if inv then
     for uuid, item in pairs(inv) do
-      if item.IsWorn then
+      if item.IsWorn and item.WearableType < 5 then
+        wearables[item.WearableType+1] = {}
+        wearables[item.WearableType+1].Item = item
+	wearables[item.WearableType+1].ItemID = uuid
+	local cmt = [[
         fmv.AgentWearablesUpdate_WearableDataBlock(p, total_wearables, 
-          AgentID, -- ItemID
+          uuid, -- ItemID
           item.AssetID, -- AssetID
           item.WearableType -- WearableType
         )
         print("Wearable#:", total_wearables, "uuid:", uuid, "asset:", item.AssetID) 
+	]]
         total_wearables = total_wearables + 1
       end
     end
+    total_wearables = 0
+    for i, item in ipairs(wearables) do
+	if item then
+          fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
+            item.ItemID, -- ItemID
+            item.Item.AssetID, -- AssetID
+            i-1 -- WearableType
+          )
+	else
+          fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
+            zero_uuid, -- ItemID
+            zero_uuid, -- AssetID
+            i-1 -- WearableType
+          )
+	end
+      total_wearables = total_wearables + 1 
+    end
+    print("Total wearables: ", total_wearables)
     fmv.AgentWearablesUpdate_WearableDataBlockSize(p, total_wearables)
     smv_send_then_unlock(sess, p)
   else
@@ -607,6 +646,19 @@ function smv_fetch_inventory_descendents(sess, d)
 	  0, -- CreationDate
 	  0) -- CRC
         total_item_descendents = total_item_descendents + 1
+	if (total_item_descendents > 10) then
+          fmv.InventoryDescendents_ItemDataBlockSize(p, total_item_descendents)
+          fmv.InventoryDescendents_AgentData(p, AgentID, FolderID, OwnerID, 
+              0, -- Version
+              total_folder_descendents + total_item_descendents) -- Descendents
+          smv_send_then_unlock(sess, p)
+	  print("Sent one descendants packet")
+	  total_item_descendents = 0
+	  total_folder_descendents = 0
+          p = fmv.packet_new()
+          fmv.InventoryDescendentsHeader(p)
+          fmv.InventoryDescendents_FolderDataBlockSize(p, total_folder_descendents)
+	end
       end
     end
   end
@@ -616,6 +668,14 @@ function smv_fetch_inventory_descendents(sess, d)
       total_folder_descendents + total_item_descendents) -- Descendents
   
   print("Total Item Descendents:", total_item_descendents)
+  smv_send_then_unlock(sess, p)
+  p = fmv.packet_new()
+  fmv.InventoryDescendentsHeader(p)
+  fmv.InventoryDescendents_FolderDataBlockSize(p, 0)
+  fmv.InventoryDescendents_ItemDataBlockSize(p, 0)
+  fmv.InventoryDescendents_AgentData(p, AgentID, FolderID, OwnerID, 
+     0, -- Version
+     0) -- Descendents
   smv_send_then_unlock(sess, p)
 end
 
@@ -670,6 +730,7 @@ function smv_packet(idx, d)
   else 
     local sess = smv_state.sessions[smv_state.sess_id_by_remote[remote_str]]
     if sess then
+      sess.idx = idx
       if gid == "PacketAck" then
       elseif fmv.IsReliable(d) then
         -- print("Got a reliable packet!\n")
@@ -690,6 +751,7 @@ function smv_packet(idx, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
 	smv_x_send_avatar_data(sess)
+	-- smv_agent_wearables_update(sess, nil)
       elseif gid == "AgentDataUpdateRequest" then
         -- smv_agent_data_update(sess, d)
       elseif gid == "AgentUpdate" then
@@ -715,7 +777,6 @@ function smv_packet(idx, d)
       elseif gid == "AgentCachedTexture" then
 	smv_agent_cached_texture(sess, d)
       elseif gid == "EconomyDataRequest" then
-	smv_agent_wearables_update(sess, nil)
       elseif gid == "MoneyBalanceRequest" then
         smv_send_money_balance(sess, d)
       elseif gid == "LogoutRequest" then
@@ -763,6 +824,11 @@ smv.serialize = function()
   print "Serialized Lua state: "
   print(s)
   return s
+end
+
+function interrupt_save_state()
+  print("Interrupted, saving state")
+  smv.serialize()
 end
 
 smv.start_listener("0.0.0.0", 9000)

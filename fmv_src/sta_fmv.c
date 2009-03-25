@@ -881,6 +881,14 @@ dbuf_t *ZeroEncodePacket(dbuf_t *d)
     d1->dsize = zerolen;
     return d1;
 }
+static void checkspace(dbuf_t *d, int size)
+{
+  if (size > d->size-10) {
+    if(!dgrow(d, 1024)) {
+      assert(0 == "DGrow failed");
+    }
+  }
+}
 
 dbuf_t *ZeroDecodePacket(dbuf_t *d)
 {
@@ -907,20 +915,20 @@ dbuf_t *ZeroDecodePacket(dbuf_t *d)
         if (src[i] == 0x00) {
             for (j = 0; j < src[i + 1]; j++) {
                 dest[zerolen++] = 0x00;
-                assert(zerolen < d1->size);
+		checkspace(d1, zerolen);
             }
 
             i++;
         } else {
             dest[zerolen++] = src[i];
-            assert(zerolen < d1->size);
+	    checkspace(d1, zerolen);
         }
     }
 
     /* Copy appended ACKs */
     for (; i < srclen; i++) {
         dest[zerolen++] = src[i];
-        assert(zerolen < d1->size);
+	checkspace(d1, zerolen);
     }
 
     d1->dsize = zerolen;

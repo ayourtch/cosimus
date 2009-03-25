@@ -74,9 +74,13 @@ static int lua_fn_dcheck(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
   if(d->dsize > d->size) {
-    luaL_error(L, "dsize > size");
+   // luaL_error(L, "dsize > size")
+   lua_pushnumber(L, d->dsize);
+   lua_pushnumber(L, d->size);
+   return 2;
+  } else {
+   return 0;
   }
-  return 0;
 }
 static int lua_fn_dstr(lua_State *L)
 {

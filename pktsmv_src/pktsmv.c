@@ -7,6 +7,7 @@
 
 #include <math.h>
 #include "libsupp.h"
+#include <assert.h>
 
 static void
 dpack_bit(dbuf_t *dbuf, int bit)
@@ -359,6 +360,7 @@ lua_fn_SendLayerData(lua_State *L)
   }
   while(!done) {
     pkt = MakeLayerPatches(patches, patches); 
+    assert(pkt->dsize < pkt->size);
     lua_getglobal(L, "smv_send_then_unlock");
     lua_pushvalue(L, -2); // the sess entry
     lua_pushlightuserdata(L, pkt);
