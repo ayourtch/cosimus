@@ -5,6 +5,8 @@
 #include "lib_httpd.h"
 #include <stdlib.h>
 #include <lauxlib.h>
+#include "lua_libsu_int.h"
+#include "libsupp.h"
 
 
 int lua_pcall_with_debug_ex(lua_State *L, int nargs, int nresults, int dbgtype, int level, char *file, int lineno)
@@ -137,6 +139,103 @@ lua_fn_sock_send_data(lua_State *L) {
   dbuf_t *d = lua_checkdbuf(L, 2);
   int nwrote = sock_send_data(idx, d);
   lua_pushinteger(L, nwrote);
+  return 1;
+}
+
+char *tcp_connect_sig = "tcp_connect_outgoing";
+
+// Common event handler that calls Lua for outgoing TCP connection events
+static int
+tcp_connect_handler_call(int idx, char *event, dbuf_t *data)
+{
+  appdata_lua_outgoing_tcp_t *ad;
+  dbuf_t *d = cdata_get_appdata_dbuf(idx, tcp_connect_sig);
+  lua_State *L;
+  int result = 0;
+  if (d) {
+    ad = (void*) d->buf;
+    L = ad->L;
+    lua_getglobal(L, ad->lua_handler_name);
+    lua_pushnumber(L, idx);
+    lua_pushstring(L, event);
+    lua_pushlightuserdata(L, data);
+    lua_pcall_with_debug(L, 3, 1, 0, 0);
+    result = lua_tonumber(L, 1);
+    lua_pop(L, 1);
+  } else {
+    debug(0, 0, "TCP connect handler idx %d, corrupt or absent appdata", idx);
+    result = -1;
+  }
+  return result;
+}
+
+static void 
+ev_tcp_connect_channel_ready(int idx, void *u_ptr)
+{
+  debug(0, 0, "channel ready!");
+  tcp_connect_handler_call(idx, "channel_ready", NULL);
+}
+
+static int
+ev_tcp_connect_read(int idx, dbuf_t *d, void *u_ptr)
+{
+  return tcp_connect_handler_call(idx, "read", d);
+}
+
+static int
+ev_tcp_connect_closed(int idx, void *u_ptr)
+{
+  appdata_lua_outgoing_tcp_t *ad;
+  dbuf_t *d = cdata_get_appdata_dbuf(idx, tcp_connect_sig);
+  int ret = tcp_connect_handler_call(idx, "closed", NULL);
+  if (d) {
+    ad = (void*) d->buf;
+    free(ad->lua_handler_name);
+  }
+  return ret;
+}
+
+static int
+ev_tcp_newconn(int idx, int parent, void *u_ptr)
+{
+  return tcp_connect_handler_call(idx, "newconn", NULL);
+}
+
+static int 
+lua_fn_sock_tcp_connect(lua_State *L) {
+  int error = 0;
+  char *addr = (void *)luaL_checkstring(L, 1);
+  int port = luaL_checkint(L, 2);
+  char *lua_handler_name = strdup(luaL_checkstring(L, 3));
+  int idx = initiate_connect(addr, port);
+
+  if (idx >= 0) {
+    appdata_lua_outgoing_tcp_t *ad;
+    dbuf_t *d = dsetusig(dalloczf(sizeof(appdata_http_t)), tcp_connect_sig);
+    if (d) {
+      sock_handlers_t *h;
+      ad = (void*)d->buf;
+      ad->lua_handler_name = lua_handler_name;
+      ad->L = L;
+      cdata_set_appdata_dbuf(idx, d);
+      h = cdata_get_handlers(idx);
+      h->ev_channel_ready = ev_tcp_connect_channel_ready;
+      h->ev_read = ev_tcp_connect_read;
+      h->ev_closed = ev_tcp_connect_closed;
+      h->ev_newconn = ev_tcp_newconn;
+      debug(0, 0, "Set the new socket with handler: %s", lua_handler_name);
+
+      lua_pushnumber(L, idx);
+    } else {
+      error = 1;
+    }
+  } else {
+    error = 1;
+  }
+  if (error) {
+    free(lua_handler_name);
+    lua_pushnil(L);
+  }
   return 1;
 }
 
@@ -314,6 +413,7 @@ static const luaL_reg su_lib[] = {
   {"cdata_get_remote4", lua_fn_cdata_get_remote4 },
   {"cdata_check_remote4", lua_fn_cdata_check_remote4 },
   {"sock_send_data", lua_fn_sock_send_data },
+  { "sock_tcp_connect", lua_fn_sock_tcp_connect },
   { "run_cycles", lua_fn_run_cycles },
   { "http_start_listener", lua_fn_http_start_listener },
   { "libsupp_init", lua_fn_libsupp_init },

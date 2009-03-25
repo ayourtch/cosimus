@@ -63,6 +63,8 @@ void print_socks(void);
 
 int bind_tcp_listener_specific(char *addr, int port);
 int bind_tcp_listener(int port);
+int initiate_connect(char *addr, int port);
+
 
 int sock_one_cycle(int timeout, void *u_ptr);
 

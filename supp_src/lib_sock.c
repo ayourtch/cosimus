@@ -553,6 +553,37 @@ ev_newconn(int idx, int parent, void *u_ptr)
   return 0;
 }
 
+/* outbound connection succeeded */
+int
+ev_newoutconn(int idx, int parent, void *u_ptr)
+{
+  /* the struct was zeroed out before - when we started connect
+      bzero(&cdata[idx], sizeof(cdata[idx])); */
+
+  cdata[idx].connected = 1;
+  cdata[idx].inbound = 0;
+  cdata[idx].l7state = 0;
+  cdata[idx].recv_list = 0;
+  nconnections++;
+
+
+  debug(DBG_GLOBAL, 1,
+        "New connection on index %d, connected: %d, inbound: %d", idx,
+        cdata[idx].connected, cdata[idx].inbound);
+
+  if(cdata[idx].handlers.ev_newconn) {
+     cdata[idx].handlers.ev_newconn(idx, parent, u_ptr); 
+  }
+  if(cdata[idx].do_ssl == 0) {
+    if(cdata[idx].handlers.ev_channel_ready) {
+      cdata[idx].handlers.ev_channel_ready(idx, u_ptr);
+    }
+  }
+  return 0;
+}
+
+
+
 
 int
 create_tcp_socket()
@@ -769,7 +800,7 @@ sock_unconnected_pollinout(int i, void *u_ptr)
   } else {
     debug(DBG_GLOBAL, 1, "Index %d successfully connected", i);
     cdata[i].connected = 1;
-    ev_newconn(i, -1, u_ptr);
+    ev_newoutconn(i, -1, u_ptr);
   }
 }
 
