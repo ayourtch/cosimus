@@ -462,7 +462,7 @@ function smv_asset_upload_request(sess, d)
   local uuid = fmv.uuid_create()
   local TransactionID, Type, Tempfile, StoreLocal, AssetData = fmv.Get_AssetUploadRequest_AssetBlock(d)
   print("Asset upload request: ", TransactionID, Type, Tempfile, StoreLocal, #AssetData)
-  print("Asset Data:", AssetData)
+  print("Asset Data len:", #AssetData)
   smv_state.transactions[TransactionID] = {}
   smv_state.transactions[TransactionID].AssetID = uuid
   smv_state.assets[uuid] = newasset
@@ -734,6 +734,8 @@ function smv_packet(idx, d)
       elseif gid == "ViewerEffect" then
         smv_viewer_effect(sess, d)
         -- FIXME: alwaysrun
+      elseif gid == "AgentSetAppearance" then
+      elseif gid == "AgentIsNowWearing" then
       elseif gid == "UUIDNameRequest" then
         smv_uuid_name_request(sess, d)
       elseif gid == "RequestImage" then
