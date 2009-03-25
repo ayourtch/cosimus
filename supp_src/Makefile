@@ -11,12 +11,12 @@ all: supplib
 supplib: depend libsupp.so libreload.so
 
 libsupp.so: $(OBJS)
-	 $(CC) -g -shared -Wl,-soname,libsupp.so -o $@ $^ $(LIBS)
+	 $(CC) -shared -Wl,-soname,libsupp.so -o $@ $^ $(LIBS)
 	 cp $@ ../lib/$@.tmp
 	 mv ../lib/$@.tmp ../lib/$@
 
 libreload.so: lua_libreload.o
-	 $(CC) -g -shared -o $@ $^ $(LIBS)
+	 $(CC) -shared -o $@ $^ $(LIBS)
 	 cp $@ ../lib/$@.tmp
 	 mv ../lib/$@.tmp ../lib/$@
 	

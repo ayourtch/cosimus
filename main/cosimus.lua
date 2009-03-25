@@ -23,7 +23,6 @@ end
 
 
 function run_child(childname, arg)
-  print("Starting child...")
   local result, details = libreload.child(childname, arg)
   if result == "error_require" then
     print("Error in require:", details)

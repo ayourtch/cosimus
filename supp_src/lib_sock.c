@@ -360,13 +360,8 @@ do_l7_reset(int idx)
 void
 ev_channel_ready(int idx, void *u_ptr)
 {
-  sock_ev_channel_ready_t h;
-  int hidx = libsock_data->cdata[idx].handlers.ev_channel_ready;
-  if(hidx > 0) {
-    h = get_handler_ptr(hidx);
-    if (h) {
-      h(idx, u_ptr);
-    }
+  if (libsock_data->cdata[idx].handlers.ev_channel_ready) {
+    libsock_data->cdata[idx].handlers.ev_channel_ready(idx, u_ptr);
   }
 }
 
@@ -378,18 +373,13 @@ int
 ev_read(int idx, dbuf_t * d, void *u_ptr)
 {
   int out = 0;
-  sock_ev_read_t h;
-  int hidx = libsock_data->cdata[idx].handlers.ev_read;
 
   debug(DBG_GLOBAL, 1, "ev_read for index %d idx, apptype: %d\n",
         idx, libsock_data->cdata[idx].apptype);
   debug_dump(DBG_GLOBAL, 100, d->buf, d->dsize);
- 
-  if (hidx > 0) {
-    h = get_handler_ptr(hidx);
-    if (h) {
-      out = h(idx, d, u_ptr);
-    }
+
+  if (libsock_data->cdata[idx].handlers.ev_read) {
+    out = libsock_data->cdata[idx].handlers.ev_read(idx, d, u_ptr);
   }
   return out;
 }
@@ -401,8 +391,6 @@ int
 ev_closed(int idx, void *u_ptr)
 {
   dbuf_t *d;
-  sock_ev_closed_t h;
-  int hidx = libsock_data->cdata[idx].handlers.ev_closed;
 
   if(libsock_data->cdata[idx].is_ssl) {
     SSL_shutdown(libsock_data->cdata[idx].ssl);
@@ -412,12 +400,8 @@ ev_closed(int idx, void *u_ptr)
   while((d = rpop(&libsock_data->cdata[idx].xmit_list))) {
     dunlock(d);
   }
-
-  if(hidx > 0) {
-    h = get_handler_ptr(hidx);
-    if (h) {
-      h(idx, u_ptr);
-    }
+  if(libsock_data->cdata[idx].handlers.ev_closed) {
+    libsock_data->cdata[idx].handlers.ev_closed(idx, u_ptr);
   }
   dunlock(libsock_data->cdata[idx].appdata);
 
@@ -548,9 +532,6 @@ initiate_connect(char *addr, int port)
 int
 ev_newconn(int idx, int parent, void *u_ptr)
 {
-
-  int h_new_idx = libsock_data->cdata[parent].handlers.ev_newconn;
-
   bzero(&libsock_data->cdata[idx], sizeof(libsock_data->cdata[idx]));
 
   libsock_data->cdata[idx].connected = 1;
@@ -563,19 +544,12 @@ ev_newconn(int idx, int parent, void *u_ptr)
         "New connection on index %d, connected: %d, inbound: %d", idx,
         libsock_data->cdata[idx].connected, libsock_data->cdata[idx].inbound);
 
-  if(h_new_idx > 0) {
-    sock_ev_newconn_t h_new = get_handler_ptr(h_new_idx);
-    if (h_new) {
-      h_new(idx, parent, u_ptr); 
-    }
+  if(libsock_data->cdata[parent].handlers.ev_newconn) {
+     libsock_data->cdata[parent].handlers.ev_newconn(idx, parent, u_ptr); 
   }
   if(libsock_data->cdata[idx].do_ssl == 0) {
-    int h_channel_ready_idx = libsock_data->cdata[idx].handlers.ev_channel_ready;
-    if(h_channel_ready_idx > 0) {
-      sock_ev_channel_ready_t h_channel_ready = get_handler_ptr(h_channel_ready_idx);
-      if (h_channel_ready) {
-        h_channel_ready(idx, u_ptr);
-      }
+    if(libsock_data->cdata[idx].handlers.ev_channel_ready) {
+      libsock_data->cdata[idx].handlers.ev_channel_ready(idx, u_ptr);
     }
   }
   return 0;
@@ -1101,66 +1075,4 @@ void *libsock_init(void *data)
   libsock_data = data;
   return data;
 }
-
-void *get_handler_ptr(int index)
-{
-  dbuf_t *hd = libsock_data->handlers;
-  handler_reg_t *hreg;
-  int hcount;
-
-  if(hd == NULL) {
-    return NULL;
-  }
-  hreg = (void *)hd->buf;
-  hcount = hd->dsize / sizeof(handler_reg_t);
-
-  if(index > hcount) {
-    debug(0,0, "Handler index %d bigger than handle array length %d", index, hcount);
-    return NULL;
-  }
-
-  return hreg[index].handler_ptr;
-}
-
-int register_socket_handler(char *name, void *ptr)
-{
-  dbuf_t *hd = libsock_data->handlers;
-  handler_reg_t *hreg;
-  handler_reg_t newreg;
-  int hcount;
-  int i=0;
-
-  if(hd == NULL) {
-    libsock_data->handlers = dalloc(1024);
-    hd = libsock_data->handlers;
-    if(hd == NULL) {
-      return -1;
-    }
-    /* ensure the index "0" is stuffed with something */
-    memset(&newreg, 0, sizeof(newreg));
-    dmemcat(hd, &newreg, sizeof(newreg)); 
-  }
-  hreg = (void *)hd->buf;
-  hcount = hd->dsize / sizeof(handler_reg_t);
-  while(i<hcount && (hreg[i].handler_name == NULL || strcmp(hreg[i].handler_name, name))) {
-    i++;
-  }
-  if(i < hcount) {
-    /* Found an existing entry, just update */
-    if (ptr) {
-      hreg[i].handler_ptr = ptr;
-    }
-  } else {
-    if (ptr) {
-      newreg.handler_name = strdup(name);
-      newreg.handler_ptr = ptr;
-      dmemcat(hd, &newreg, sizeof(newreg));
-    } else {
-      debug(0,0, "Attempt to register the new handler %s with null ptr!", name);
-      return -1;
-    }
-  }
-  return i;
-}
-
 

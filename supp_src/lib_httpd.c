@@ -65,7 +65,7 @@ int http_newconn(int idx, int parent, void *u_ptr)
   dp = cdata_get_appdata_dbuf(parent, http_appdata_sig);
 
   h = cdata_get_handlers(idx);
-  h->ev_read = register_socket_handler("ev_http_read", ev_http_read);
+  h->ev_read = ev_http_read;
 
   adp = (void *)dp->buf;
   ad = (void *)d->buf;
@@ -89,7 +89,7 @@ int http_start_listener(char *addr, int port, http_dispatcher_func_t dispatcher)
   assert(idx >= 0);
 
   h = cdata_get_handlers(idx);
-  h->ev_newconn = register_socket_handler("ev_http_newconn", http_newconn);
+  h->ev_newconn = http_newconn;
 
   d = alloc_appdata_http(idx);
   ad = (void *)d->buf;
@@ -103,11 +103,6 @@ int http_start_listener(char *addr, int port, http_dispatcher_func_t dispatcher)
   return 1;
 }
 
-void httpd_register_handlers(void)
-{
-  register_socket_handler("ev_http_newconn", http_newconn);
-  register_socket_handler("ev_http_read", ev_http_read);
-}
 
 
 void

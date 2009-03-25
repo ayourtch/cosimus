@@ -63,22 +63,27 @@ typedef struct {
 } conndata_t;
 
 typedef struct {
-  char *handler_name;
-  void *handler_ptr;
-} handler_reg_t;
-
-typedef struct {
   struct pollfd ufds[MAX_FDS];
   conndata_t cdata[MAX_FDS];
   int nfds;
   int nclients;               /* number of active inbound connections */
   //long nconnections;          /* counter for incoming connections */
   int biggest_udp_idx;        /* the biggest index of the UDP sockets */
-  dbuf_t *handlers;     /* array of handler_reg_t */
 } lib_sock_runtime_data_t;
 
-void *get_handler_ptr(int index);
 
+
+#ifdef XXXXX
+extern struct pollfd ufds[MAX_FDS];
+extern conndata_t cdata[MAX_FDS];
+extern int nfds;
+
+int nclients;
+
+long nconnections; 
+
+int biggest_udp_idx; 
+#endif
 int do_l7_reset(int idx);
 
 
