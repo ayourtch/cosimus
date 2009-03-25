@@ -161,9 +161,7 @@ lua_fn_libsupp_init(lua_State *L)
   if (!lua_isnil(L, 1)) {
     ptr = lua_touserdata(L, 1);
   }
-  ptr = libsupp_init(ptr);
-  lua_pushlightuserdata(L, ptr);
-  return 1;
+  return 0;
 }
 
 static int
