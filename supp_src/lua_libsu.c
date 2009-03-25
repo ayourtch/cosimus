@@ -454,13 +454,20 @@ static const luaL_reg su_lib[] = {
   {NULL, NULL}
 };
 
+#define lua_register_number(L, con) do { \
+  lua_pushstring(L, #con); \
+  lua_pushnumber(L, con); \
+  lua_settable(L,-3); \
+  } while (0)
+
 LUA_API int luaopen_libsupp (lua_State *L) {
   luaL_openlib(L, "su", su_lib, 0);
 
   lua_getglobal(L, "su");
-  lua_pushstring(L, "version");
-  lua_pushstring(L, "1.0");
-  lua_settable(L,-3);
+  lua_register_number(L, SOCK_EVENT_CHANNEL_READY);
+  lua_register_number(L, SOCK_EVENT_READ);
+  lua_register_number(L, SOCK_EVENT_CLOSED);
+  lua_register_number(L, SOCK_EVENT_NEWCONN);
   
   {
     /*
