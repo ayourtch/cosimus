@@ -13,15 +13,6 @@ cfg.AssetServerURL = "http://" .. cfg.IP .. ":8003/"
 cfg.UserServerURL = "http://" .. cfg.IP .. ":8003/"
 cfg.SeedCap = "http://" .. cfg.IP .. ":8003/CAPS/seed/"
 
-if uuid_create == nil then
-  uuid_create = function()
-    return("6ee4df6a-0ea9-4cf5-8ac7-cccccccccccc")
-  end
-  regionhandle_str = function(x,y)
-    return "12345"
-  end
-end
-
 function handle_xmlrpc_login(req, appdata, dh, dd)
   local xxSimParams = {}
   local userids = {}
@@ -38,8 +29,8 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
   local zAgentId = "6ee4df6a-0ea9-4cf5-8ac7-cccccccccccc"
   zAgentId = userids[id_index]
 
-  local zSessionId = uuid_create()
-  local zSecureSessionId = uuid_create()
+  local zSessionId = fmv.uuid_create()
+  local zSecureSessionId = fmv.uuid_create()
 
   local zCircuitCode = math.random(2^24)
   local zRegionX = cfg.X
@@ -54,7 +45,7 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
    xxSimParams["startpos_x"] = 128
    xxSimParams["startpos_y"] = 128
    xxSimParams["startpos_z"] = 30
-   xxSimParams["regionhandle"] = regionhandle_str(zRegionX, zRegionY)
+   xxSimParams["regionhandle"] = "12345" -- regionhandle_str(zRegionX, zRegionY)
 
    local responseData = {}
    local xxGlobalT = {}
