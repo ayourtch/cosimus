@@ -9,4 +9,4 @@ tstlib.so: tstlib.o
 	$(CC) $(LDFLAGS) -shared -o tstlib.so $^ $(LIBS) $(LUA_LIBS)
 
 clean:
-	rm -f *.o tst
+	rm -f *.o tst *.so
