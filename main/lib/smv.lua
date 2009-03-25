@@ -174,7 +174,7 @@ function smv_parcel_properties_request(sess, d)
      1, -- PublicCount
      12345, -- LocalID (of what?)
      AgentID, -- OwnerID, temporarily set to user id for test
-     0, -- IsGroupOwned
+     false, -- IsGroupOwned
      0, -- AuctionID
      10000, -- ClaimDate
      0, -- ClaimPrice
@@ -508,9 +508,6 @@ function smv_create_inventory_item(sess, d)
   print("TransactionID for create inventory item:", TransactionID)
   print("FolderID", FolderID)
   print("CallbackID", CallbackID)
-  if FolderID == "00000000-0000-0000-0000-000000000000" then
-    FolderID = "9846e02a-f41b-4199-7777-000000000001"
-  end
   local ItemID, AssetID = smv_inv_create_inventory_item(AgentID, FolderID, 
                         TransactionID, Type, InvType, WearableType, Name, Description)
 
@@ -680,6 +677,7 @@ function smv_packet(idx, d)
         -- do nothing
       elseif gid == "CompleteAgentMovement" then
         smv_send_agent_movement_complete(sess)
+	--smv_agent_wearables_update(sess, nil)
 	smv_send_parcel_overlay(sess)
 	smv.SendLayerData(sess)
 	-- smv_parcel_properties_request(sess, d)
@@ -691,7 +689,7 @@ function smv_packet(idx, d)
         smv_ping_check_reply(sess, d)
 	smv_x_send_avatar_data(sess)
       elseif gid == "AgentDataUpdateRequest" then
-        smv_agent_data_update(sess, d)
+        -- smv_agent_data_update(sess, d)
       elseif gid == "AgentUpdate" then
         smv_agent_update_received(sess, d)
         -- frequent agent updates go here
@@ -714,6 +712,8 @@ function smv_packet(idx, d)
         smv_transfer_request(sess, d)
       elseif gid == "AgentCachedTexture" then
 	smv_agent_cached_texture(sess, d)
+      elseif gid == "EconomyDataRequest" then
+	smv_agent_wearables_update(sess, nil)
       elseif gid == "MoneyBalanceRequest" then
         smv_send_money_balance(sess, d)
       elseif gid == "LogoutRequest" then
