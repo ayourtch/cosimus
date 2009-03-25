@@ -22,8 +22,7 @@ static void *lua_checkdbuf(lua_State *L, int index)
   if(lua_islightuserdata(L, index)) {
     return lua_touserdata(L, index);
   } else {
-    lua_pushstring(L, "dbuf expected as first argument");
-    lua_error(L);
+    luaL_error(L, "dbuf expected as first argument");
     return NULL;
   }
 
