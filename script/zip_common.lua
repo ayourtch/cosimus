@@ -82,6 +82,7 @@ function parse_inventory_xml(zf, zfilename, relpath, folderlist, assetlist)
 	  if item.itemsFile then
 	    -- library listing, do nothing
 	  elseif item.folderID then
+	    -- pretty("item", item)
             item.assetType = tonumber(item.assetType)
             item.inventoryType = tonumber(item.inventoryType)
 	    item.currentPermissions = tonumber(item.currentPermissions)

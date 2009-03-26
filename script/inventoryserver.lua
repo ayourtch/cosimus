@@ -30,15 +30,16 @@ function inventory_server_http(uri, appdata, dh, dd)
     if not inv then
       inv = {}
       -- body. note the 1-based indexing in lua... grrr.
-      inv[1] = ii("66c41e39-38f9-f75a-024e-585989bfaba9", "66c41e39-38f9-f75a-024e-585989bfab73")
+      -- inv[1] = ii("5c86b033-b9cc-11dc-95ff-0800200c9a66", "66c41e39-38f9-f75a-024e-585989bfab73")
+      inv[1] = ii("d5e46210-b9d1-11dc-95ff-0800200c9a66", "66c41e39-38f9-f75a-024e-585989bfab73")
       -- skin
-      inv[2] = ii("77c41e39-38f9-f75a-024e-585989bfabc9", "77c41e39-38f9-f75a-024e-585989bbabbb")
-      inv[3] = ii(zero_uuid, zero_uuid)
+      inv[2] = ii("5c86b030-b9cc-11dc-95ff-0800200c9a66", "77c41e39-38f9-f75a-024e-585989bbabbb")
+      inv[3] = ii("d342e6c1-b9d2-11dc-95ff-0800200c9a66", "d342e6c0-b9d2-11dc-95ff-0800200c9a66")
       inv[4] = ii(zero_uuid, zero_uuid)
       -- shirt
-      inv[5] = ii("77c41e39-38f9-f75a-0000-585989bf0000", "00000000-38f9-1111-024e-222222111110")
+      inv[5] = ii("d5e46210-b9d1-11dc-95ff-0800200c9a66", "00000000-38f9-1111-024e-222222111110")
       -- Pants
-      inv[6] = ii("77c41e39-38f9-f75a-0000-5859892f1111", "00000000-38f9-1111-024e-222222111120")
+      inv[6] = ii("d5e46211-b9d1-11dc-95ff-0800200c9a66", "00000000-38f9-1111-024e-222222111120")
       for i=7,13 do
         inv[i] = ii(zero_uuid, zero_uuid)
       end

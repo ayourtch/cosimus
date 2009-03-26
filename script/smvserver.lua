@@ -288,6 +288,8 @@ function smv_cb_wearables_received(a)
   local AgentID, SessionID = sess.AgentID, sess.SessionID
   local total_wearables = 0
   local wearables = a.Wearables
+  local BaseMask = 0x3fffffff -- NextOwnerMask
+  local Flags = 0x3fffffff
   if not wearables then
     -- good place to put the "default wearables" here
     wearables = {}
@@ -300,6 +302,45 @@ function smv_cb_wearables_received(a)
       wearables[i+1] = item
     end
   end
+
+  wearables[13] = nil
+  wearables[12] = nil
+
+  local p = fmv.packet_new()
+  fmv.UpdateCreateInventoryItemHeader(p)
+  fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
+      true, -- SimApproved
+      zero_uuid -- TransactionID
+    )
+  for i, item in ipairs(wearables) do
+    print("Update-create #", i)
+    fmv.UpdateCreateInventoryItem_InventoryDataBlock(p, i, 
+      item.ItemID, 
+      loginserver_get_inventory_root(AgentID), 
+      0,
+      AgentID, -- CreatorID
+      AgentID, -- OwnerID
+      zero_uuid, -- GroupID
+      BaseMask, -- BaseMask
+      BaseMask, -- OwnerMask
+      BaseMask, -- GroupMask
+      BaseMask, -- EveryoneMask
+      BaseMask, -- NextOwnerMask
+      false, -- GroupOwned
+      item.AssetID, -- AssetID
+      13, -- Type
+      18, -- InvType
+      Flags, -- Flags
+      0, -- SaleType,
+      123, -- SalePrice
+      "Test " .. tostring(i) .. " " .. item.ItemID .. "\000", -- Name
+      "Test Desc\000", -- Description
+      100000, -- CreationDate
+      0 -- CRC
+    )
+  end
+  fmv.UpdateCreateInventoryItem_InventoryDataBlockSize(p,11)
+  smv_send_then_unlock(sess, p)
 
   local p = fmv.packet_new()
   fmv.AgentWearablesUpdateHeader(p)
@@ -361,7 +402,7 @@ function smv_cb_asset_client_asset(a, asset_base)
         2, -- ChannelType, 
         0, -- Packet
         1, -- Status
-        asset.Data);
+        asset_base.Data);
       smv_send_then_unlock(sess, p)
     else
       print("Multipacket sending!")
@@ -591,7 +632,7 @@ function smv_create_inventory_item(sess, d)
   print("FolderID", FolderID)
   print("CallbackID", CallbackID)
   local ItemID, AssetID = smv_inv_create_inventory_item(AgentID, FolderID, 
-                        TransactionID, Type, InvType, WearableType, Name, Description)
+                        TransactionID, Type, InvType, WearableType, Name, Description, true)
 
   fmv.UpdateCreateInventoryItemHeader(p)
   fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
@@ -846,7 +887,7 @@ function smv_packet(idx, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
 	smv_x_send_avatar_data(sess)
-        smv_agent_wearables_request(sess)
+        -- smv_agent_wearables_request(sess)
       elseif gid == "AgentDataUpdateRequest" then
         -- smv_agent_data_update(sess, d)
       elseif gid == "AgentUpdate" then
