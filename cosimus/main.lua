@@ -16,5 +16,5 @@ config.inventory_client = {
 
 require 'cosimus'
 
-su.set_debug_level(1000, 100)
+-- su.set_debug_level(1000, 100)
 

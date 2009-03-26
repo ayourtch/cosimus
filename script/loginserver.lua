@@ -161,7 +161,7 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
    responseData["secure_session_id"] = zSecureSessionId
    responseData["login"] = "true"
 
-   su.dstrcat(dh, "Content-type: text/xml; charset=utf-8")
+   su.dstrcat(dh, "Content-type: text/xml; charset=utf-8\r\n")
 
    dprint_xml_response(responseData, dd)
 end
