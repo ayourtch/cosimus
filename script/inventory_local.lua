@@ -19,13 +19,15 @@ function int_inventory_put_item_to(AgentID, key, item)
 end
 
 function int_inventory_get_item_from(AgentID, key)
+  -- print("Checking existence of ", AgentID)
   local inventory = int_inventory_check_exists(AgentID)
   return inventory[key]
 end
 
-function invloc_create_folder(AgentID, ID, parent, FolderType, FolderName)
+function invloc_create_folder(AgentID, ID, parent, FolderType, FolderName, nocheck)
   local f = {}
   local uuid = ID
+  local ch = nil
   if not uuid then
     uuid = fmv.uuid_create()
   end
@@ -35,8 +37,20 @@ function invloc_create_folder(AgentID, ID, parent, FolderType, FolderName)
   f.ChildItems = {}
   if parent then
     local par = int_inventory_get_item_from(AgentID, parent)
-    local ch = par.ChildFolders
-    ch[1+#ch] = uuid
+    print("Parent::", parent, AgentID)
+    if not par and not nocheck then
+      local uupar = invloc_create_folder(AgentID, parent, zero_uuid, 0, "Root Folder Autocreated", true)
+      par = int_inventory_get_item_from(AgentID, uupar)
+      print("invloc_create_folder: autocreated parent ", parent)
+    end
+    if par then
+      ch = par.ChildFolders
+    end
+    if ch then
+      table.insert(ch, uuid)
+    elseif not nocheck then
+      error("Parent with id ", parent, "was not found")
+    end
     f.FolderID = parent
   else
     f.FolderID = zero_uuid
@@ -88,11 +102,19 @@ function invloc_retrieve_child_elements(AgentID, RootID, FieldName)
 end
 
 function invloc_retrieve_child_folders(AgentID, RootID)
-  return invloc_retrieve_child_elements(AgentID, RootID, 'ChildFolders')
+  local ch = invloc_retrieve_child_elements(AgentID, RootID, 'ChildFolders')
+  if #ch == 0 then
+    ch = invloc_retrieve_child_elements("library", RootID, 'ChildFolders')
+  end
+  return ch
 end
 
 function invloc_retrieve_child_items(AgentID, RootID)
-  return invloc_retrieve_child_elements(AgentID, RootID, 'ChildItems')
+  local ch = invloc_retrieve_child_elements(AgentID, RootID, 'ChildItems')
+  if #ch == 0 then
+    ch = invloc_retrieve_child_elements("library", RootID, 'ChildItems')
+  end
+  return ch
 end
 
 
@@ -112,6 +134,15 @@ function invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID,
   i.Description = Description
   if FolderID then
     local par = int_inventory_get_item_from(AgentID, FolderID)
+    if not par then
+      print('Parent not found for', FolderID)
+      return nil
+      --[[
+      local uupar = invloc_create_folder(AgentID, FolderID, zero_uuid, -1, "Root Folder Autocreated from invloc_create_inventory_item")
+      par = int_inventory_get_item_from(AgentID, uupar)
+      print("invloc_create_inventory_item: autocreated parent ", FolderID)
+      --]]
+    end
     local ch = par.ChildItems
     ch[1+#ch] = uuid
     i.FolderID = FolderID

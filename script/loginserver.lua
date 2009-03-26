@@ -81,6 +81,7 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
   --  local id_index  = param.first .. "-" .. param.last
   local zAgentId = loginserver_get_user_uuid(param.first, param.last, false)
   local zInventoryRootFolderID = loginserver_get_inventory_root(zAgentId)
+  local zInventoryRootLibFolderID = "00000112-000f-0000-0000-000100bba000"
   
 
   local zSessionId = fmv.uuid_create()
@@ -124,7 +125,11 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
       loginserver_format_skeleton_reply(
          invloc_retrieve_skeleton(zAgentId, zInventoryRootFolderID))
 
-   responseData["inventory-skel-lib"] = {
+   responseData["inventory-skel-lib"] = 
+      loginserver_format_skeleton_reply(
+         invloc_retrieve_skeleton("library", zInventoryRootLibFolderID ))
+	 --[[
+	 {
           { folder_id = "a846e02a-f41b-4199-860e-cde46cc25654",
             parent_id = "00000000-0000-0000-0000-000000000000",
             name = "Lib Inventory",
@@ -136,9 +141,11 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
             type_default = 5,
             version = 1 }
    } 
+   --]]
 
    responseData["inventory-root"] = { { folder_id = zInventoryRootFolderID } }
-   responseData["inventory-lib-root"] = { { folder_id = "a846e02a-f41b-4199-860e-cde46cc25654" } }
+   responseData["inventory-lib-root"] = { { folder_id = zInventoryRootLibFolderID } }
+   responseData["inventory-lib-owner"] = { { agent_id = zAgentId  } }
    responseData["gestures"] = { }
    responseData["gestures"][0] = "array"
 

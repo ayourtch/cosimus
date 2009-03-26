@@ -693,6 +693,14 @@ function smv_fetch_inventory_descendents(sess, d)
     print("Retrieved ", #items, "child items")
     for i, item in ipairs(items) do
       if not item.IsFolder then
+        local InvType = item.InvType
+	if not InvType then
+	  InvType = item.Type
+	end
+	local Description = item.Description
+	if not Description then
+	  Description = "default desc"
+	end
         fmv.InventoryDescendents_ItemDataBlock(p, total_item_descendents, 
           item.ID, -- ItemID
   	  item.FolderID, -- FolderID
@@ -707,12 +715,12 @@ function smv_fetch_inventory_descendents(sess, d)
 	  false, -- GroupOwned
 	  item.AssetID, -- AssetID
 	  item.Type, -- Type
-	  item.InvType, -- InvType
+	  InvType, -- InvType
 	  0x3fffffff, -- Flags
 	  0, -- SaleType
 	  0, -- SalePrice
-	  item.Name, -- Name
-	  item.Description, -- Description
+	  item.Name .. "\000", -- Name
+	  Description .. "\000", -- Description
 	  0, -- CreationDate
 	  0) -- CRC
         total_item_descendents = total_item_descendents + 1
@@ -829,7 +837,7 @@ function smv_packet(idx, d)
         smv_send_agent_movement_complete(sess)
 	smv_send_parcel_overlay(sess)
 	smv.SendLayerData(sess)
-        smv_agent_wearables_request(sess)
+        -- smv_agent_wearables_request(sess)
 	-- smv_parcel_properties_request(sess, d)
 	-- smv_x_send_avatar_data(sess)
 
@@ -838,6 +846,7 @@ function smv_packet(idx, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
 	smv_x_send_avatar_data(sess)
+        smv_agent_wearables_request(sess)
       elseif gid == "AgentDataUpdateRequest" then
         -- smv_agent_data_update(sess, d)
       elseif gid == "AgentUpdate" then
