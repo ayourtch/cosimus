@@ -3,6 +3,7 @@
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
+#include "luazip.h"
 
 #include "lib_debug.h"
 #include "lib_uuid.h"
@@ -30,6 +31,7 @@ int main(int argc, char *argv[])
   
   L = lua_open();
   luaL_openlibs(L);
+  luaopen_zip(L);
   luaopen_libfmv(L);
   luaopen_libpktsmv(L);
   luaopen_libsupp(L);

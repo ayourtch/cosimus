@@ -114,3 +114,57 @@ function pretty (name, value, saved)
       end
     end
 
+--
+-- Pure Lua version of dirname.
+--
+dirname = function(path)
+	while true do
+		if path == "" or
+		   string.sub(path, -1) == "/" or
+		   string.sub(path, -2) == "/." or
+		   string.sub(path, -3) == "/.." or
+		   (string.sub(path, -1) == "." and
+		    string.len(path) == 1) or
+		   (string.sub(path, -2) == ".." and
+		    string.len(path) == 2) then
+			break
+		end
+		path = string.sub(path, 1, -2)
+	end
+	if path == "" then
+		path = "."
+	end
+	if string.sub(path, -1) ~= "/" then
+		path = path .. "/"
+	end
+
+	return path
+end
+
+--
+-- Pure Lua version of basename.
+--
+basename = function(path)
+	local i = string.len(path)
+
+	while string.sub(path, i, i) == "/" and i > 0 do
+		path = string.sub(path, 1, i - 1)
+		i = i - 1
+	end
+	while i > 0 do
+		if string.sub(path, i, i) == "/" then
+			break
+		end
+		i = i - 1
+	end
+	if i > 0 then
+		path = string.sub(path, i + 1, -1)
+	end
+	if path == "" then
+		path = "/"
+	end
+
+	return path
+end
+
+
