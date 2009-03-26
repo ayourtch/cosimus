@@ -282,8 +282,7 @@ end
 -- a.Wearables contains the array of UUIDs of wearables or nil
 -- NB: async req & session should be checked elsewhere to be non-null
 
-function smv_cb_wearables_received(uuid)
-  local a = async_get(uuid)
+function smv_cb_wearables_received(a)
   local sess = smv_get_session(a.SessionID)
   local AgentID, SessionID = sess.AgentID, sess.SessionID
   local total_wearables = 0

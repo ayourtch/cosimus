@@ -16,26 +16,22 @@ function inventory_server_http(uri, appdata, dh, dd)
 
   if uri == "/" then
     -- dstrcat(dh, "Refresh: 0; /\n")
-    pp('<html><body><h1>Test form</h1><form action="/foo" method="post"><textarea name="xxx"></textarea><input type="submit"></form></body></html>')
-  elseif uri == "/" then 
+  elseif string.match(uri, "^/wearables/") then
+    local uuid = string.gsub(uri, "^/wearables/", "")
+    local inv = invloc_retrieve_inventory_item(uuid, "wearables")
+    if not inv then
+      inv = {}
+      inv[1] = "19053066-19fc-11de-a6fe-33b680117112"
+      inv[2] = "1efd535e-19fc-11de-a6fe-33b680117112"
+      inv[3] = "3a6cd682-19fc-11de-a6fe-33b680117112"
+      inv[4] = "40c5a6ee-19fc-11de-a6fe-33b680117112"
 
-    pp("<html><body>\n")
-    pp("<h1>header test for uri:", uri, "</h1>")
-    pp("<p>post len: " , su.get_http_data(appdata, "post_data_length") , "</p>")
-    pp("<p>Post data: <pre>", pdata, "</pre></p>")
-    pp(tostring(os.time()))
-    pp("<p><b>query: ", su.get_http_data(appdata, "querystring"), "</b></p>\n")
-    pp("</body></html>")
-    if pdata then
-      print("PostData:", pdata)
-      local file = io.open("tmp/loginserver.txt","a")
-      file:write("---- data ----\n")
-      file:write(pdata)
-      file:write("\n")
-      file:close()
     end
+    local db = serialize("local wearables", inv)
+    su.dstrcat(dh, "Content-Type: text/x-lua-script\r\n")
+    su.dstrcat(dd, su.dgetstr(db))
   else 
-    su.dstrcat(dh, "Refresh: 0; /\n")
+    su.dstrcat(dh, "HTTP/1.0 404 Not Found\r\n\r\n")
   end
   -- these two will be appended to header and body respectively
   -- however, the performance of the lua string function is abysmal

@@ -36,7 +36,18 @@ end
 function int_inventory_client_parse_wearables(idx)
   -- we've just received wearables, parse them
   local is = inventory_client_sockets
-  print("WeGotWearables!!!", su.dgetstr(is[idx].RecvData))
+  local reply = su.dgetstr(is[idx].RecvData)
+  -- local http_code, http_message = string.match(reply, "^HTTP/1.[10]%s(%d+)%s(%a+)\n")
+  local http_code, http_message = string.match(reply, "^HTTP/1.[10]%s(%d+)%s(%a+)")
+  local sep_idx, sep_idx_end = string.find(reply, "\r\n\r\n")
+  local body = string.sub(reply, sep_idx_end + 1)
+  print("WeGotWearables!!!", http_code, http_message, body)
+  --- !!! FIXME SECURITY !!!
+  local w = assert(loadstring(body .. "\nreturn wearables\n"))()
+  pretty("wrbl", w)
+  local a = async_get(is[idx].AsyncID)
+  a.Wearables = w
+  a.Callback(a)
 end
 
 function int_inventory_client_make_http_req(method, url, uuid)
