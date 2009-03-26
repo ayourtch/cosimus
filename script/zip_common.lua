@@ -24,7 +24,6 @@ function parse_assets_xml(zf, zfilename, relpath, folderlist, assetlist)
 	  if item.folderID or item.itemsFile then
 	    -- Inventory item/folder/library
 	  else
-	    pretty("item", item)
             item.ZipFileName = zfilename
             item.ItemFileName = dirname(folderlist[relpath].FolderPath) .. item.fileName
             -- .. item.fileName
