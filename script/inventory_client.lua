@@ -6,7 +6,6 @@ inventory_client_sockets = {}
 
 function int_inventory_client_parse_wearables(idx, d)
   -- we've just received wearables, parse them
-  print ("DDD: ", d)
   local is = inventory_client_sockets
   local http_code, body, http_message = http_client_parse_reply(idx)
   print("WeGotWearables!!!", http_code, http_message, body)
