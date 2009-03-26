@@ -42,8 +42,7 @@ function int_inventory_client_parse_wearables(idx)
   local sep_idx, sep_idx_end = string.find(reply, "\r\n\r\n")
   local body = string.sub(reply, sep_idx_end + 1)
   print("WeGotWearables!!!", http_code, http_message, body)
-  --- !!! FIXME SECURITY !!!
-  local w = assert(loadstring(body .. "\nreturn wearables\n"))()
+  local w = Json.Decode(body)
   pretty("wrbl", w)
   local a = async_get(is[idx].AsyncID)
   a.Wearables = w

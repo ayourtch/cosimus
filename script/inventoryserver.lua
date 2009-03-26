@@ -27,9 +27,8 @@ function inventory_server_http(uri, appdata, dh, dd)
       inv[4] = "40c5a6ee-19fc-11de-a6fe-33b680117112"
 
     end
-    local db = serialize("local wearables", inv)
-    su.dstrcat(dh, "Content-Type: text/x-lua-script\r\n")
-    su.dstrcat(dd, su.dgetstr(db))
+    su.dstrcat(dh, "Content-Type: text/json\r\n")
+    su.dstrcat(dd, Json.Encode(inv))
   else 
     su.dstrcat(dh, "HTTP/1.0 404 Not Found\r\n\r\n")
   end

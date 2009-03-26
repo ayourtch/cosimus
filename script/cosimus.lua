@@ -1,3 +1,4 @@
+require 'Json'
 require 'smvserver'
 require 'inventory_client'
 require 'loginserver'
