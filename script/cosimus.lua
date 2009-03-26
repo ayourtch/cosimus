@@ -1,4 +1,5 @@
-require 'Json'
+require 'startup'
+require 'json'
 require 'smvserver'
 require 'inventory_client'
 require 'loginserver'
