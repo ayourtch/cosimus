@@ -20,13 +20,19 @@ function parse_assets_xml(zf, zfilename, relpath, folderlist, assetlist)
           item.ZipFileName = zfilename
           item.FolderPath = other_relpath
         else
-          item.ZipFileName = zfilename
-          item.ItemFileName = dirname(folderlist[relpath].FolderPath) .. item.fileName
-          -- .. item.fileName
-          table.insert(items, item)
-          if assetlist then
-            table.insert(assetlist, item)
-          end
+	  
+	  if item.folderID or item.itemsFile then
+	    -- Inventory item/folder/library
+	  else
+	    pretty("item", item)
+            item.ZipFileName = zfilename
+            item.ItemFileName = dirname(folderlist[relpath].FolderPath) .. item.fileName
+            -- .. item.fileName
+            table.insert(items, item)
+            if assetlist then
+              table.insert(assetlist, item)
+            end
+	  end
         end
       end
     end
