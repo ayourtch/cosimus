@@ -520,6 +520,7 @@ function smv_asset_upload_request(sess, d)
   local TransactionID, Type, Tempfile, StoreLocal, AssetData = fmv.Get_AssetUploadRequest_AssetBlock(d)
   print("Asset upload request: ", TransactionID, Type, Tempfile, StoreLocal, #AssetData)
   print("Asset Data len:", #AssetData)
+  print("Asset Data", AssetData)
   smv_state.transactions[TransactionID] = {}
   smv_state.transactions[TransactionID].AssetID = uuid
   smv_state.assets[uuid] = newasset
@@ -535,7 +536,7 @@ function smv_asset_upload_request(sess, d)
     fmv.RequestXfer_XferID(p, 
       string.rep("\0", 8), -- XferID
       "blah", --  FileName
-      "", -- Path
+      0, -- Path
       Tempfile, -- DeleteOnCompletion
       false, -- UseBigPackets
       uuid, -- VFileID
@@ -546,7 +547,10 @@ function smv_asset_upload_request(sess, d)
 end
 
 function smv_inv_create_inventory_item(AgentID, FolderID, TransactionID, Type, InvType, WearableType, Name, Description)
-  local AssetID = smv_state.transactions[TransactionID].AssetID
+  local AssetID = zero_uuid
+  if not (TransactionID == zero_uuid) then
+    AssetID = smv_state.transactions[TransactionID].AssetID
+  end
   print("smv_inv_create_inventory_item: ", TransactionID)
   local ItemID = invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID, Type, InvType, WearableType, Name, Description)
   return ItemID, AssetID
@@ -603,6 +607,29 @@ function smv_create_inventory_item(sess, d)
   -- ]]
 end
 
+
+function smv_update_inventory_item(sess, d)
+  local AgentID, SessionID, TransactionID = fmv.Get_UpdateInventoryItem_AgentData(d)
+  local sz = fmv.Get_UpdateInventoryItem_InventoryDataBlockSize(d)
+
+  print("Update inventory item size", sz, "transaction id", TransactionID)
+  for j=0,sz-1 do
+    local i = {}
+    i.ItemID, i.FolderID, i.CallbackID, i.CreatorID, i.OwnerID, i.GroupID, 
+         i.BaseMask, i.OwnerMask, i.GroupMask, i.EveryoneMask, i.NextOwnerMask, 
+	 i.GroupOwned, i.TransactionID, i.Type, i.InvType, i.Flags, i.SaleType, i.SalePrice,
+	 i.Name, i.Description, i.CreationDate = fmv.Get_UpdateInventoryItem_InventoryDataBlock(d, j)
+
+    i.ID = i.ItemID
+    if not (TransactionID == zero_uuid) then
+      i.AssetID = smv_state.transactions[TransactionID].AssetID
+    end
+    invloc_update_inventory_item(AgentID, i.ItemID, i)
+    
+  end
+
+end
+
 function smv_create_inventory_folder(sess, d)
   local p = fmv.packet_new()
   local AgentID, SessionID = fmv.Get_CreateInventoryFolder_AgentData(d)
@@ -624,7 +651,8 @@ function smv_fetch_inventory_descendents(sess, d)
   fmv.InventoryDescendentsHeader(p)
   -- folder descendents will go here
   if FetchFolders then
-    local folders = invloc_retrieve_child_folders(AgentID, ParentID)
+    local folders = invloc_retrieve_child_folders(AgentID, FolderID)
+
     for i, item in ipairs(folders) do
       if item.IsFolder then
         fmv.InventoryDescendents_FolderDataBlock(p, total_folder_descendents,
@@ -809,6 +837,7 @@ function smv_packet(idx, d)
       elseif gid == "CreateInventoryFolder" then
         smv_create_inventory_folder(sess, d)
       elseif gid == "UpdateInventoryItem" then
+        smv_update_inventory_item(sess, d)
         -- FIXME!!!!
       elseif gid == "FetchInventoryDescendents" then
         smv_fetch_inventory_descendents(sess, d)

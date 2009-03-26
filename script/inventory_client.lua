@@ -4,6 +4,7 @@ end
 
 function int_inventory_check_exists(AgentID)
   local inventory = smv_state["local_inventory"][AgentID]
+  -- print("InventoryCheck:", inventory, AgentID)
   if not inventory then
     smv_state["local_inventory"][AgentID] = {}
     inventory = smv_state["local_inventory"][AgentID]
@@ -14,6 +15,7 @@ end
 function int_inventory_put_item_to(AgentID, key, item)
   local inventory = int_inventory_check_exists(AgentID)
   inventory[key] = item
+  return item
 end
 
 function int_inventory_get_item_from(AgentID, key)
@@ -127,5 +129,20 @@ end
 
 function invloc_set_inventory_item(AgentID, uuid, item)
   local item = int_inventory_put_item_to(AgentID, uuid, item)
+  return item
+end
+
+function invloc_update_inventory_item(AgentID, uuid, update_item)
+  print("updating item", AgentID, uuid)
+  pretty("update_item", update_item)
+  local item = int_inventory_get_item_from(AgentID, uuid)
+  if item then
+    for k,v in pairs(update_item) do
+      item[k] = update_item[k]
+    end
+  else
+    item = update_item
+  end
+  int_inventory_put_item_to(AgentID, uuid, item)
   return item
 end
