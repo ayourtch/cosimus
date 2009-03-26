@@ -203,8 +203,12 @@ function asset_server_http(uri, appdata, dh, dd)
 end
 
 assetserver.coldstart = function()
-  load_zip_assets("opensim_assets.zip")
-  su.http_start_listener("0.0.0.0", 8003, "asset_server_http")
+  local ic = config.asset_server
+  print("Starting HTTP Asset server on", ic.ServerAddress, ic.ServerPort)
+  for i, zfile in ipairs(ic.DefaultArchives) do
+    load_zip_assets(zfile)
+  end
+  su.http_start_listener(ic.ServerAddress, ic.ServerPort, "asset_server_http")
   print("Lua HTTP Asset server startup complete!\n")
 end
 
