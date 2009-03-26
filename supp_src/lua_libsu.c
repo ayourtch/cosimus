@@ -378,7 +378,6 @@ static int lua_http_handler(dbuf_t *dad, dbuf_t *dh, dbuf_t *dd)
       header = (void*) lua_tolstring(L, -2, &header_len);
       dmemcat(dd, body, body_len);
       dmemcat(dh, header, header_len);
-      dprintf(dh, "\r\n");
       lua_pop(L, 1);
       lua_pop(L, 1);
       debug(DBG_GLOBAL, 3, "Explicitly returned %d header chars, %d body chars\n", header_len, body_len);

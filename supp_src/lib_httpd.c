@@ -282,8 +282,7 @@ http_handle_request(int idx)
         global_time = time(NULL);
         strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT",
            gmtime(&global_time));
-        // dprintf(dh0, "Date: %s\r\n", timebuf);
-        dprintf(dh0, "Date: '%s'", timebuf);
+        dprintf(dh0, "Date: %s\r\n", timebuf);
 	dmemcat(dh0, dh->buf, dh->dsize);
 	dh->dsize = 0;
 	dmemcat(dh, dh0->buf, dh0->dsize);
