@@ -50,3 +50,12 @@ function assets_zip_scan(zfname)
   end
   return assetlist
 end
+
+function get_zip_content(zfname, relpath)
+  local zf = zip.open(zfname)
+  local f = zf:open(relpath)
+  local data = f:read("*a")
+  f:close()
+  zf:close()
+  return data
+end

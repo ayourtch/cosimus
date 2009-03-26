@@ -1,5 +1,6 @@
 require "startup"
 require "httpd_common"
+require 'zip_common'
 
 assetserver = {}
 
@@ -91,6 +92,25 @@ if not smv_state.all_assets then
   smv_state.all_assets = {}
 end
 
+if not smv_state.file_assets then
+  smv_state.file_assets = {}
+end
+
+function load_zip_assets(fname)
+  local assets = assets_zip_scan(fname)
+  for i, asset in ipairs(assets) do
+    a = {}
+    a.Type = asset.assetType
+    a.ID = asset.assetID
+    a.Description = asset.description
+    a.Name = asset.Name
+    a.ZipFileName = asset.ZipFileName
+    a.ItemFileName = asset.ItemFileName
+    smv_state.file_assets[a.ID] = a
+  end
+  print("load_zip_assets: loaded " .. tostring(#assets) .. " assets from file " .. fname)
+end
+
 function store_asset(asset)
   print("Storing asset:")
   pretty("asset", asset)
@@ -98,7 +118,23 @@ function store_asset(asset)
 end
 
 function get_asset(ID)
-  return smv_state.all_assets[ID]
+  local a = smv_state.all_assets[ID]
+  if not a then
+    local fa = smv_state.file_assets[ID]
+    if fa then
+      a = {}
+      a.Type = fa.Type
+      a.ID = fa.ID
+      a.FullID = fa.FullID
+      a.Description = fa.Description
+      a.Name = fa.Name
+      a.Temporary = false
+      a.Local = false
+      a.Data = base64.encode(get_zip_content(fa.ZipFileName, fa.ItemFileName))
+      print("Got file offset " .. a.Name, a.ID)
+    end
+  end
+  return a
 end
 
 function asset_server_http(uri, appdata, dh, dd)
@@ -167,6 +203,7 @@ function asset_server_http(uri, appdata, dh, dd)
 end
 
 assetserver.coldstart = function()
+  load_zip_assets("opensim_assets.zip")
   su.http_start_listener("0.0.0.0", 8003, "asset_server_http")
   print("Lua HTTP Asset server startup complete!\n")
 end
