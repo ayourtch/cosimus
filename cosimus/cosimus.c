@@ -13,6 +13,9 @@
 #include "pktsmv.h"
 #include "libsupp.h"
 
+LUALIB_API int luaopen_base64(lua_State *L);
+
+
 lua_State *L;
 int dump_and_leave = 0;
 
@@ -32,6 +35,7 @@ int main(int argc, char *argv[])
   L = lua_open();
   luaL_openlibs(L);
   luaopen_zip(L);
+  luaopen_base64(L);
   luaopen_libfmv(L);
   luaopen_libpktsmv(L);
   luaopen_libsupp(L);
