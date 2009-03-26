@@ -2,6 +2,7 @@
 --require 'libsupp'
 -- require 'libpktsmv'
 require 'serialize'
+require 'async'
 
 smv_state = {}
 smv_state.assets = {}
@@ -20,6 +21,9 @@ function cr()
   print("\n")
 end
 
+function smv_get_session(uuid)
+  return smv_state.sessions[uuid]
+end
 
 function smv_next_seq(sess, p)
   sess.seq = sess.seq + 1
@@ -274,27 +278,27 @@ function smv_parcel_access_list_request(sess, d)
   smv_send_then_unlock(sess, p)
 end
 
-function smv_agent_wearables_update(sess, d)
-  local p = fmv.packet_new()
-  local AgentID, SessionID
-  if d then
-    AgentID, SessionID = fmv.Get_AgentWearablesRequest_AgentData(d)
-  else 
-    AgentID, SessionID = sess.AgentID, sess.SessionID
-  end
-  -- FIXME!!
+-- CB: called when we finally got the wearables
+-- a.Wearables contains the array of UUIDs of wearables or nil
+-- NB: async req & session should be checked elsewhere to be non-null
+
+function smv_cb_wearables_received(uuid)
+  local a = async_get(uuid)
+  local sess = smv_get_session(a.SessionID)
+  local AgentID, SessionID = sess.AgentID, sess.SessionID
   local total_wearables = 0
-  local wearables = invloc_retrieve_inventory_item(sess.AgentID, "wearables")
+  local wearables = a.Wearables
   if not wearables then
+    -- good place to put the "default wearables" here
     wearables = {}
   end
-  print("Wearables update for agent ", AgentID, SessionID)
   for i=0,12 do
     if not wearables[i] then
       wearables[i] = zero_uuid
     end
   end
-  
+
+  local p = fmv.packet_new()
   fmv.AgentWearablesUpdateHeader(p)
   fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 0)
   total_wearables = 0
@@ -303,22 +307,29 @@ function smv_agent_wearables_update(sess, d)
     local item = invloc_retrieve_inventory_item(sess.AgentID, item_id)
     if item then
       fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
-            item.ID, -- ItemID
-            item.AssetID, -- AssetID
-            i-1 -- WearableType
-          )
+	    item.ID, -- ItemID
+	    item.AssetID, -- AssetID
+	    i-1 -- WearableType
+	  )
     else
       fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
-          zero_uuid, -- ItemID
-          zero_uuid, -- AssetID
-          i-1 -- WearableType
-        )
+	  zero_uuid, -- ItemID
+	  zero_uuid, -- AssetID
+	  i-1 -- WearableType
+	)
     end
     total_wearables = total_wearables + 1 
   end
   print("Total wearables: ", total_wearables)
   fmv.AgentWearablesUpdate_WearableDataBlockSize(p, total_wearables)
   smv_send_then_unlock(sess, p)
+end
+
+function smv_agent_wearables_request(sess)
+  local AgentID, SessionID = sess.AgentID, sess.SessionID
+  -- fire up an async callback
+  local uuid = inventory_client_wearables_request(sess.SessionID, sess.AgentID, smv_cb_wearables_received)
+  print("Wearables request async ID", uuid)
 end
 
 function smv_transfer_request(sess, d)
@@ -807,9 +818,9 @@ function smv_packet(idx, d)
         -- do nothing
       elseif gid == "CompleteAgentMovement" then
         smv_send_agent_movement_complete(sess)
-	--smv_agent_wearables_update(sess, nil)
 	smv_send_parcel_overlay(sess)
 	smv.SendLayerData(sess)
+        smv_agent_wearables_request(sess)
 	-- smv_parcel_properties_request(sess, d)
 	-- smv_x_send_avatar_data(sess)
 
@@ -818,7 +829,6 @@ function smv_packet(idx, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
 	smv_x_send_avatar_data(sess)
-	-- smv_agent_wearables_update(sess, nil)
       elseif gid == "AgentDataUpdateRequest" then
         -- smv_agent_data_update(sess, d)
       elseif gid == "AgentUpdate" then
@@ -827,7 +837,7 @@ function smv_packet(idx, d)
       elseif gid == "AgentHeightWidth" then
         smv_agent_width_height(sess, d)
       elseif gid == "AgentWearablesRequest" then
-        smv_agent_wearables_update(sess, d)
+        smv_agent_wearables_request(sess)
       elseif gid == 'SomeFooBarZZZZZ' then
 	smv_x_send_avatar_data(sess)
       elseif gid == "AssetUploadRequest" then

@@ -45,7 +45,8 @@ function inventory_server_http(uri, appdata, dh, dd)
 end
 
 inventoryserver.coldstart = function()
-  su.http_start_listener("0.0.0.0", 8004, "inventory_server_http")
-  print("Lua HTTP Inventory server startup complete!")
+  local ic = config.inventory_server
+  print("Starting HTTP Inventory server on", ic.ServerAddress, ic.ServerPort)
+  su.http_start_listener(ic.ServerAddress, ic.ServerPort, "inventory_server_http")
 end
 
