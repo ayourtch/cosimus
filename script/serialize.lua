@@ -17,21 +17,29 @@ function basicSerialize (o)
   end
 end
 
-function FullSerialize(name, value, d, saved)
+function FullSerialize(name, value, d, saved, depth)
   saved = saved or {}       -- initial value
-  su.dstrcat(d, name .. " = ")
+  depth = depth or 1
+  local shortname = string.format("t[%d]", depth)
+  if depth == 1 then
+    su.dstrcat(d, "local t = {}\n")
+  end
   if type(value) == "number" or type(value) == "string" or type(value) == "boolean" then
+    su.dstrcat(d, name .. " = ")
     su.dstrcat(d, basicSerialize(value) .. "\n")
   elseif type(value) == "table" then
     if saved[value] then    -- value already saved?
+      su.dstrcat(d, name .. " = ")
       su.dstrcat(d, saved[value] .. "\n")  -- use its previous name
     else
       saved[value] = name   -- save name for next time
+      su.dstrcat(d, shortname .. " = ")
       su.dstrcat(d, "{}\n")     -- create a new table
+      su.dstrcat(d, name .. " = " .. shortname .. "\n")
       for k,v in pairs(value) do      -- save its fields
-        local fieldname = string.format("%s[%s]", name,
+        local fieldname = string.format("%s[%s]", shortname,
                                           basicSerialize(k))
-        FullSerialize(fieldname, v, d, saved)
+        FullSerialize(fieldname, v, d, saved, depth+1)
       end
     end
   else
