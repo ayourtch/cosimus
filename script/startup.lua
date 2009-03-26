@@ -95,7 +95,7 @@ function pretty (name, value, saved)
       end
 
       io.write(name, " = ")
-      if type(value) == "number" or type(value) == "string" or type(value) == "boolean" then
+      if type(value) == "number" or type(value) == "string" or type(value) == "boolean" or type(value) == "nil" then
         io.write(basicSerialize(value), "\n")
       elseif type(value) == "table" then
         if saved[value] then    -- value already saved?

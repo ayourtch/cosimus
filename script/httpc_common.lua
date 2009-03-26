@@ -46,7 +46,6 @@ function http_client_parse_reply(idx)
 end
 
 function http_client_make_req(addr, port, method, url, postdata, uuid, chunk_cb, all_cb)
-  local ic = config.inventory_client
   local is = inventory_client_sockets
   local req = {};
 
@@ -68,7 +67,7 @@ function http_client_make_req(addr, port, method, url, postdata, uuid, chunk_cb,
   end
   pp('\r\n\r\n')
 
-  local idx = su.sock_tcp_connect(ic.ServerAddress, ic.ServerPort, 
+  local idx = su.sock_tcp_connect(addr, port, 
                                  "http_client_callback")
   if is[idx] and is[idx].RecvData then
     print("Freeing up previous recvdata for ", idx)

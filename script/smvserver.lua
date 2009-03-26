@@ -3,6 +3,7 @@
 -- require 'libpktsmv'
 require 'serialize'
 require 'async'
+require 'asset_client'
 
 smv_state = {}
 smv_state.assets = {}
@@ -292,8 +293,11 @@ function smv_cb_wearables_received(a)
     wearables = {}
   end
   for i=0,12 do
-    if not wearables[i] then
-      wearables[i] = zero_uuid
+    if not wearables[i+1] then
+      local item = {}
+      item.ItemID = zero_uuid
+      item.AssetID = zero_uuid
+      wearables[i+1] = item
     end
   end
 
@@ -301,17 +305,16 @@ function smv_cb_wearables_received(a)
   fmv.AgentWearablesUpdateHeader(p)
   fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 0)
   total_wearables = 0
-  for i, item_id in ipairs(wearables) do
-    print("Wearable #", i, item_id)
-    local item = invloc_retrieve_inventory_item(sess.AgentID, item_id)
+  for i, item in ipairs(wearables) do
+    print("Wearable #", i, item.ItemID, item.AssetID)
     if item then
-      fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
-	    item.ID, -- ItemID
+      fmv.AgentWearablesUpdate_WearableDataBlock(p, i-1, 
+	    item.ItemID, -- ItemID
 	    item.AssetID, -- AssetID
 	    i-1 -- WearableType
 	  )
     else
-      fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
+      fmv.AgentWearablesUpdate_WearableDataBlock(p, i-1, 
 	  zero_uuid, -- ItemID
 	  zero_uuid, -- AssetID
 	  i-1 -- WearableType
@@ -331,54 +334,51 @@ function smv_agent_wearables_request(sess)
   print("Wearables request async ID", uuid)
 end
 
-function smv_transfer_request(sess, d)
-  local TransferID, ChannelType, SourceType, Priority, Params = fmv.Get_TransferRequest_TransferInfo(d)
-  print("Transfer request", TransferID, "ChannelType", ChannelType, "SourceType", SourceType)
-  print("Priority", Priority, "Param len:", #Params)
+
+function smv_cb_asset_client_asset(a, asset_base)
+  local sess = smv_get_session(a.SessionID)
   local p = fmv.packet_new()
-  local item_id = fmv.uuid_from_bytes(Params)
-  local item = smv_state.assets[item_id]
   local MAX_SZ = 600 -- MAX_PACKET_SZ - 100
-  local item_sz = 0
-  print("Transfer req for id", item_id, item)
+  local asset_sz = 0
+  print("Transfer req reply for asset id", a.AssetID, asset_base)
   fmv.TransferInfoHeader(p)
-  if item then
-    item_sz = #(item.AssetData)
-    print("Item found! length:", item_sz)
+  if asset_base then
+    asset_sz = #(asset_base.Data)
+    print("Item found! length:", asset_sz)
     fmv.TransferInfo_TransferInfo(p, 
-      TransferID, 
+      a.arg.TransferID, 
       2,  -- ChannelType
       0,  -- TargetType
       0,  -- Status
-      #(item.AssetData), -- Size
-      Params)
+      asset_sz, -- Size
+      a.arg.Params)
     smv_send_then_unlock(sess, p)
-    if item_sz <= MAX_SZ then
+    if asset_sz <= MAX_SZ then
       print("One-shot sending!")
       p = fmv.packet_new()
       fmv.TransferPacketHeader(p)
-      fmv.TransferPacket_TransferData(p, TransferID, 
+      fmv.TransferPacket_TransferData(p, a.arg.TransferID, 
         2, -- ChannelType, 
         0, -- Packet
         1, -- Status
-        item.AssetData);
+        asset.Data);
       smv_send_then_unlock(sess, p)
     else
       print("Multipacket sending!")
       local packet_num = 0
       local curr_done = 0
-      while curr_done < item_sz do
-        local ass_data = string.sub(item.AssetData, curr_done+1, curr_done + MAX_SZ)
+      while curr_done < asset_sz do
+        local ass_data = string.sub(asset_base.Data, curr_done+1, curr_done + MAX_SZ)
 	local status
         p = fmv.packet_new()
         fmv.TransferPacketHeader(p)
-	if curr_done + #ass_data >= #(item.AssetData) then
+	if curr_done + #ass_data >= asset_sz then
 	  status = 1
 	else
 	  status = 0
 	end
 	print("Sending xfer packet #", packet_num, #ass_data, " total bytes, for now done ", curr_done, ", status", status)
-        fmv.TransferPacket_TransferData(p, TransferID, 
+        fmv.TransferPacket_TransferData(p, a.arg.TransferID, 
           2, -- ChannelType, 
           packet_num, -- Packet
           status, -- Status
@@ -390,15 +390,25 @@ function smv_transfer_request(sess, d)
     end
   else
     fmv.TransferInfo_TransferInfo(p, 
-      TransferID, ChannelType, 
+      a.arg.TransferID, a.arg.ChannelType, 
       0,  -- TargetType
       1,  -- Status
       0, -- Size
-      Params)
+      a.arg.Params)
     print("Item not found")
     smv_send_then_unlock(sess, p)
     
   end
+end
+
+function smv_transfer_request(sess, d)
+  local arg = {}
+
+  arg.TransferID, arg.ChannelType, arg.SourceType, arg.Priority, arg.Params = fmv.Get_TransferRequest_TransferInfo(d)
+  arg.ItemID = fmv.uuid_from_bytes(arg.Params)
+  print("Transfer request#", arg.TransferID, "for item", arg.ItemID, "ChannelType", arg.ChannelType, "SourceType", arg.SourceType)
+  -- print("Priority", Priority, "Param len:", #Params)
+  asset_client_request_asset(sess.SessionID, arg.ItemID, arg, smv_cb_asset_client_asset)
 end
 
 function smv_uuid_name_request(sess, d)
@@ -530,7 +540,7 @@ function smv_asset_upload_request(sess, d)
   local TransactionID, Type, Tempfile, StoreLocal, AssetData = fmv.Get_AssetUploadRequest_AssetBlock(d)
   print("Asset upload request: ", TransactionID, Type, Tempfile, StoreLocal, #AssetData)
   print("Asset Data len:", #AssetData)
-  print("Asset Data", AssetData)
+  -- print("Asset Data", AssetData)
   smv_state.transactions[TransactionID] = {}
   smv_state.transactions[TransactionID].AssetID = uuid
   smv_state.assets[uuid] = newasset
