@@ -286,7 +286,7 @@ function smv_agent_wearables_update(sess, d)
   local total_wearables = 0
   local wearables = {}
   print("Wearables update for agent ", AgentID, SessionID)
-  for i=0,19 do
+  for i=0,12 do
     wearables[i] = nil
   end
   
@@ -294,7 +294,7 @@ function smv_agent_wearables_update(sess, d)
   fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 0)
   if inv then
     for uuid, item in pairs(inv) do
-      if item.IsWorn and item.WearableType < 5 then
+      if item.IsWorn and item.WearableType <= 5 then
         wearables[item.WearableType+1] = {}
         wearables[item.WearableType+1].Item = item
 	wearables[item.WearableType+1].ItemID = uuid
@@ -306,6 +306,7 @@ function smv_agent_wearables_update(sess, d)
         )
         print("Wearable#:", total_wearables, "uuid:", uuid, "asset:", item.AssetID) 
 	]]
+        print("Wearable#:", item.WearableType, "uuid:", uuid, "asset:", item.AssetID) 
         total_wearables = total_wearables + 1
       end
     end
@@ -342,24 +343,55 @@ function smv_transfer_request(sess, d)
   local p = fmv.packet_new()
   local item_id = fmv.uuid_from_bytes(Params)
   local item = smv_state.assets[item_id]
+  local MAX_SZ = 600 -- MAX_PACKET_SZ - 100
+  local item_sz = #(item.AssetData)
   print("Transfer req for id", item_id)
   fmv.TransferInfoHeader(p)
   if item then
-    print("Item found! length:", #(item.AssetData))
+    print("Item found! length:", item_sz)
     fmv.TransferInfo_TransferInfo(p, 
-      TransferID, ChannelType, 
+      TransferID, 
+      2,  -- ChannelType
       0,  -- TargetType
       0,  -- Status
       #(item.AssetData), -- Size
       Params)
     smv_send_then_unlock(sess, p)
-    p = fmv.packet_new()
-
-    fmv.TransferPacketHeader(p)
-    fmv.TransferPacket_TransferData(p, TransferID, ChannelType, 
-      0, -- Packet
-      1, -- Status
-      item.AssetData);
+    if item_sz <= MAX_SZ then
+      print("One-shot sending!")
+      p = fmv.packet_new()
+      fmv.TransferPacketHeader(p)
+      fmv.TransferPacket_TransferData(p, TransferID, 
+        2, -- ChannelType, 
+        0, -- Packet
+        1, -- Status
+        item.AssetData);
+      smv_send_then_unlock(sess, p)
+    else
+      print("Multipacket sending!")
+      local packet_num = 0
+      local curr_done = 0
+      while curr_done < item_sz do
+        local ass_data = string.sub(item.AssetData, curr_done+1, curr_done + MAX_SZ)
+	local status
+        p = fmv.packet_new()
+        fmv.TransferPacketHeader(p)
+	if curr_done + #ass_data >= #(item.AssetData) then
+	  status = 1
+	else
+	  status = 0
+	end
+	print("Sending xfer packet #", packet_num, #ass_data, " total bytes, for now done ", curr_done, ", status", status)
+        fmv.TransferPacket_TransferData(p, TransferID, 
+          2, -- ChannelType, 
+          packet_num, -- Packet
+          status, -- Status
+          ass_data);
+        smv_send_then_unlock(sess, p)
+	curr_done = curr_done + #ass_data
+	packet_num = packet_num + 1
+      end
+    end
   else
     fmv.TransferInfo_TransferInfo(p, 
       TransferID, ChannelType, 
@@ -368,9 +400,9 @@ function smv_transfer_request(sess, d)
       0, -- Size
       Params)
     print("Item not found")
+    smv_send_then_unlock(sess, p)
     
   end
-  smv_send_then_unlock(sess, p)
 end
 
 function smv_uuid_name_request(sess, d)
@@ -774,6 +806,7 @@ function smv_packet(idx, d)
         smv_agent_width_height(sess, d)
       elseif gid == "AgentWearablesRequest" then
         smv_agent_wearables_update(sess, d)
+      elseif gid == 'SomeFooBarZZZZZ' then
 	smv_x_send_avatar_data(sess)
       elseif gid == "AssetUploadRequest" then
         smv_asset_upload_request(sess, d)
