@@ -1,5 +1,5 @@
-require 'loginserver'
 require 'smvserver'
+require 'loginserver'
 require 'assetserver'
 require 'inventoryserver'
 

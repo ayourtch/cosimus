@@ -1,5 +1,6 @@
 require "startup"
 require "httpd_common"
+require "inventory_client"
 
 loginserver = {}
 
@@ -13,21 +14,74 @@ cfg.AssetServerURL = "http://" .. cfg.IP .. ":8003/"
 cfg.UserServerURL = "http://" .. cfg.IP .. ":8003/"
 cfg.SeedCap = "http://" .. cfg.IP .. ":8003/CAPS/seed/"
 
+if not smv_state.users then
+  smv_state.users = {}
+end
+if not smv_state.logins then
+  smv_state.logins = {}
+end
+
+function loginserver_get_user_record(uid, enforced)
+  local r = smv_state.users[uid]
+  if (not r) and (not enforced) then
+    r = {}
+    smv_state.users[uid] = r
+    r.FirstName = "FirstRemove"
+    r.LastName = "LastMe"
+  end
+  return r
+end
+
+function loginserver_get_user_uuid(first, last, enforced)
+  local key = first .. "-" .. last 
+  local uuid = smv_state.logins[key]
+  if (not uuid) and (not enforced) then
+    uuid = fmv.uuid_create()
+    print("Creating new login record for ", first, last)
+    local r = loginserver_get_user_record(uuid, false)
+    r.FirstName = first
+    r.LastName = last
+    smv_state.logins[key] = uuid
+  end
+  return uuid
+end
+
+function loginserver_get_inventory_root(uid)
+  local r = loginserver_get_user_record(uid)
+  if not r.InventoryRootID then
+    r.InventoryRootID = invloc_create_skeleton(uid)
+  end
+  return r.InventoryRootID
+end
+
+function loginserver_format_skeleton_reply(folders)
+  local out = {}
+  print("Skeleton folders to format: ", #folders)
+  for i, folder in ipairs(folders) do
+    local f = {}
+    f.folder_id = folder.ID
+    f.parent_id = folder.FolderID
+    f.name = folder.Name
+    f.type_default = folder.Type
+    f.version = folder.Version
+    out[1+#out] = f
+  end
+  pretty("OUT", out)
+  return out
+end
+
 function handle_xmlrpc_login(req, appdata, dh, dd)
   local xxSimParams = {}
   local userids = {}
   local param = req.params[1]
-  userids["Test-User"] =      "6ee4df6a-0ea9-4cf5-8ac7-cccccccccccc"
-  userids["test-user"] =      "6ee4df6a-0ea9-4cf5-8ac7-cccccccccccc"
-  userids["Bot-User"] =       "6ee4df6a-0ea9-4cf5-8ac7-dddddddddddd"
-  userids["Dalien-Talbot"] =  "6ee4df6a-0ea9-4cf5-8ac7-eeeeeeeeeeee"
 
-  local zSessionId = "133086b6-1270-78c6-66f7-c7f64865b16c"
-  local zSecureSessionId = "6ee4df6a-0ea9-4cf5-8ac7-9745acbacccc"
+  local zSessionId = fmv.uuid_create()
+  local zSecureSessionId = fmv.uuid_create()
 
-  local id_index  = param.first .. "-" .. param.last
-  local zAgentId = "6ee4df6a-0ea9-4cf5-8ac7-cccccccccccc"
-  zAgentId = userids[id_index]
+  --  local id_index  = param.first .. "-" .. param.last
+  local zAgentId = loginserver_get_user_uuid(param.first, param.last, false)
+  local zInventoryRootFolderID = loginserver_get_inventory_root(zAgentId)
+  
 
   local zSessionId = fmv.uuid_create()
   local zSecureSessionId = fmv.uuid_create()
@@ -66,83 +120,9 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
    xxUIconfig["allow_first_life"] = "Y"
    responseData["ui-config"] = { xxUIconfig }
 
-   responseData["inventory-skeleton"] = {
-          { folder_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            parent_id = "00000000-0000-0000-0000-000000000000",
-            name = "My Inventory",
-            type_default = 8,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000003",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Animations",
-            type_default = 20,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000002",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Body Parts",
-            type_default = 13,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000004",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Calling Cards",
-            type_default = 2,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000001",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Clothing",
-            type_default = 5,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000005",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Gestures",
-            type_default = 21,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000006",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Landmarks",
-            type_default = 3,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000007",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Lost And Found",
-            type_default = 16,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000008",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Notecards",
-            type_default = 7,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000009",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Objects",
-            type_default = 6,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-00000000000a",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Photo Album",
-            type_default = 15,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-00000000000b",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Scripts",
-            type_default = 10,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-00000000000c",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Sounds",
-            type_default = 1,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-00000000000d",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Textures",
-            type_default = 12,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-00000000000e",
-            parent_id = "9846e02a-f41b-4199-860e-cde46cc25649",
-            name = "Trash",
-            type_default = 14,
-            version = 1 }
-   }
+   responseData["inventory-skeleton"] = 
+      loginserver_format_skeleton_reply(
+         invloc_retrieve_skeleton(zAgentId, zInventoryRootFolderID))
 
    responseData["inventory-skel-lib"] = {
           { folder_id = "a846e02a-f41b-4199-860e-cde46cc25654",
@@ -157,7 +137,7 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
             version = 1 }
    } 
 
-   responseData["inventory-root"] = { { folder_id = "9846e02a-f41b-4199-860e-cde46cc25649" } }
+   responseData["inventory-root"] = { { folder_id = zInventoryRootFolderID } }
    responseData["inventory-lib-root"] = { { folder_id = "a846e02a-f41b-4199-860e-cde46cc25654" } }
    responseData["gestures"] = { }
    responseData["gestures"][0] = "array"

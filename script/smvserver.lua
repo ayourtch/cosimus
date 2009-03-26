@@ -282,58 +282,43 @@ function smv_agent_wearables_update(sess, d)
   else 
     AgentID, SessionID = sess.AgentID, sess.SessionID
   end
-  local inv = smv_state.inventory[AgentID]
+  -- FIXME!!
   local total_wearables = 0
-  local wearables = {}
+  local wearables = invloc_retrieve_inventory_item(sess.AgentID, "wearables")
+  if not wearables then
+    wearables = {}
+  end
   print("Wearables update for agent ", AgentID, SessionID)
   for i=0,12 do
-    wearables[i] = nil
+    if not wearables[i] then
+      wearables[i] = zero_uuid
+    end
   end
   
   fmv.AgentWearablesUpdateHeader(p)
   fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 0)
-  if inv then
-    for uuid, item in pairs(inv) do
-      if item.IsWorn and item.WearableType <= 5 then
-        wearables[item.WearableType+1] = {}
-        wearables[item.WearableType+1].Item = item
-	wearables[item.WearableType+1].ItemID = uuid
-	local cmt = [[
-        fmv.AgentWearablesUpdate_WearableDataBlock(p, total_wearables, 
-          uuid, -- ItemID
-          item.AssetID, -- AssetID
-          item.WearableType -- WearableType
+  total_wearables = 0
+  for i, item_id in ipairs(wearables) do
+    print("Wearable #", i, item_id)
+    local item = invloc_retrieve_inventory_item(sess.AgentID, item_id)
+    if item then
+      fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
+            item.ID, -- ItemID
+            item.AssetID, -- AssetID
+            i-1 -- WearableType
+          )
+    else
+      fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
+          zero_uuid, -- ItemID
+          zero_uuid, -- AssetID
+          i-1 -- WearableType
         )
-        print("Wearable#:", total_wearables, "uuid:", uuid, "asset:", item.AssetID) 
-	]]
-        print("Wearable#:", item.WearableType, "uuid:", uuid, "asset:", item.AssetID) 
-        total_wearables = total_wearables + 1
-      end
     end
-    total_wearables = 0
-    for i, item in ipairs(wearables) do
-	if item then
-          fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
-            item.ItemID, -- ItemID
-            item.Item.AssetID, -- AssetID
-            i-1 -- WearableType
-          )
-	else
-          fmv.AgentWearablesUpdate_WearableDataBlock(p, i, 
-            zero_uuid, -- ItemID
-            zero_uuid, -- AssetID
-            i-1 -- WearableType
-          )
-	end
-      total_wearables = total_wearables + 1 
-    end
-    print("Total wearables: ", total_wearables)
-    fmv.AgentWearablesUpdate_WearableDataBlockSize(p, total_wearables)
-    smv_send_then_unlock(sess, p)
-  else
-    print("No wearables found")
-    su.dunlock(p)
+    total_wearables = total_wearables + 1 
   end
+  print("Total wearables: ", total_wearables)
+  fmv.AgentWearablesUpdate_WearableDataBlockSize(p, total_wearables)
+  smv_send_then_unlock(sess, p)
 end
 
 function smv_transfer_request(sess, d)
@@ -344,10 +329,11 @@ function smv_transfer_request(sess, d)
   local item_id = fmv.uuid_from_bytes(Params)
   local item = smv_state.assets[item_id]
   local MAX_SZ = 600 -- MAX_PACKET_SZ - 100
-  local item_sz = #(item.AssetData)
-  print("Transfer req for id", item_id)
+  local item_sz = 0
+  print("Transfer req for id", item_id, item)
   fmv.TransferInfoHeader(p)
   if item then
+    item_sz = #(item.AssetData)
     print("Item found! length:", item_sz)
     fmv.TransferInfo_TransferInfo(p, 
       TransferID, 
@@ -560,23 +546,10 @@ function smv_asset_upload_request(sess, d)
 end
 
 function smv_inv_create_inventory_item(AgentID, FolderID, TransactionID, Type, InvType, WearableType, Name, Description)
-  local ItemID = fmv.uuid_create()
-  local inv = smv_state.inventory[AgentID]
-  if inv == nil then
-    inv = {}
-    smv_state.inventory[AgentID] = inv
-  end
-  local item = {}
+  local AssetID = smv_state.transactions[TransactionID].AssetID
   print("smv_inv_create_inventory_item: ", TransactionID)
-  inv[ItemID] = item
-  item.AssetID = smv_state.transactions[TransactionID].AssetID
-  item.Type = Type
-  item.InvType = InvType
-  item.WearableType = WearableType
-  item.Name = Name
-  item.Description = Description
-  item.FolderID = FolderID
-  return ItemID, item.AssetID
+  local ItemID = invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID, Type, InvType, WearableType, Name, Description)
+  return ItemID, AssetID
 end
 
 function smv_create_inventory_item(sess, d)
@@ -631,9 +604,10 @@ function smv_create_inventory_item(sess, d)
 end
 
 function smv_create_inventory_folder(sess, d)
-  -- local p = fmv.packet_new()
+  local p = fmv.packet_new()
   local AgentID, SessionID = fmv.Get_CreateInventoryFolder_AgentData(d)
   local FolderID, ParentID, Type, Name = fmv.Get_CreateInventoryFolder_FolderData(d)
+  invloc_create_folder(AgentID, FolderID, ParentID, Type, Name)
   print("Create folder of type ", Type, " parent ", ParentID, " name: ", Name)
 end
 
@@ -649,14 +623,15 @@ function smv_fetch_inventory_descendents(sess, d)
 
   fmv.InventoryDescendentsHeader(p)
   -- folder descendents will go here
-  if inv and FetchFolders then
-    for item_id, item in pairs(inv) do
+  if FetchFolders then
+    local folders = invloc_retrieve_child_folders(AgentID, ParentID)
+    for i, item in ipairs(folders) do
       if item.IsFolder then
         fmv.InventoryDescendents_FolderDataBlock(p, total_folder_descendents,
-	  item_id, -- FolderID
+	  item.ID, -- FolderID
 	  item.FolderID, -- PArentID
 	  item.Type, -- Type
-	  item.Name) -- Name
+	  item.Name .. "\000") -- Name
 	total_folder_descendents = total_folder_descendents + 1
       end
     end
@@ -664,12 +639,14 @@ function smv_fetch_inventory_descendents(sess, d)
   fmv.InventoryDescendents_FolderDataBlockSize(p, total_folder_descendents)
   print("Total Folder Descendents:", total_folder_descendents)
 
-
-  if inv and FetchItems then
-    for item_id, item in pairs(inv) do
+  print("FetchItems: ", FetchItems)
+  if FetchItems then
+    local items = invloc_retrieve_child_items(AgentID, FolderID)
+    print("Retrieved ", #items, "child items")
+    for i, item in ipairs(items) do
       if not item.IsFolder then
         fmv.InventoryDescendents_ItemDataBlock(p, total_item_descendents, 
-          item_id, -- ItemID
+          item.ID, -- ItemID
   	  item.FolderID, -- FolderID
 	  AgentID, -- CreatorID
 	  AgentID, -- OwnerID
@@ -741,6 +718,23 @@ function smv_agent_cached_texture(sess, d)
   smv_send_then_unlock(sess, p)
 end
 
+function smv_agent_is_now_wearing(sess, d)
+  local sz = fmv.Get_AgentIsNowWearing_WearableDataBlockSize(d)
+  local wearables = invloc_retrieve_inventory_item(sess.AgentID, "wearables")
+  if not wearables then
+    wearables = {}
+  end
+  print("Now wearing:", sz)
+  for i=0,sz-1 do
+    local ItemID, WearableType = fmv.Get_AgentIsNowWearing_WearableDataBlock(d, i)
+    print("Wearable #", i, ItemID, WearableType)
+    wearables[i+1] = ItemID
+  end
+  invloc_set_inventory_item(sess.AgentID, "wearables", wearables)
+end
+
+function smv_agent_set_appearance(sess, d)
+end
 
 function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
@@ -842,7 +836,9 @@ function smv_packet(idx, d)
         smv_viewer_effect(sess, d)
         -- FIXME: alwaysrun
       elseif gid == "AgentSetAppearance" then
+        smv_agent_set_appearance(sess, d)
       elseif gid == "AgentIsNowWearing" then
+        smv_agent_is_now_wearing(sess, d)
       elseif gid == "UUIDNameRequest" then
         smv_uuid_name_request(sess, d)
       elseif gid == "RequestImage" then
