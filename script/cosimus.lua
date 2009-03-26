@@ -1,4 +1,5 @@
 require 'smvserver'
+require 'inventory_client'
 require 'loginserver'
 require 'assetserver'
 require 'inventoryserver'

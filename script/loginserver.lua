@@ -1,6 +1,6 @@
 require "startup"
 require "httpd_common"
-require "inventory_client"
+require "inventory_local"
 
 loginserver = {}
 
