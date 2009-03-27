@@ -174,6 +174,11 @@ function smv_chat_from_viewer(sess, d)
   local AgentID, SessionID = fmv.Get_ChatFromViewer_AgentData(d)
   local Message, Type, Channel = fmv.Get_ChatFromViewer_ChatData(d)
   print("Chat from viewer type ", Type, " channel ", Channel, " message ", Message)
+  if Message then
+    local cmd = string.sub(Message, 1, -2)
+    print("'" .. cmd .. "'")
+    print(assert(loadstring(cmd))())
+  end
 end
 
 function smv_parcel_properties_request(sess, d)
@@ -309,8 +314,8 @@ function smv_cb_wearables_received(a)
 	      i.ItemID, 
 	      i.FolderID, 
 	      0,
-	      i.CreatorID, -- CreatorID
-	      i.OwnerID, -- OwnerID
+	      i.CreatorID or AgentID, -- CreatorID
+	      i.OwnerID or AgentID, -- OwnerID
 	      i.GroupID, -- GroupID
 	      i.BaseMask, -- BaseMask
 	      i.OwnerMask, -- OwnerMask
@@ -644,13 +649,13 @@ function smv_create_inventory_item(sess, d)
   arg.CallbackID, arg.FolderID, arg.TransactionID, arg.NextOwnerMask, arg.Type, arg.InvType, 
         arg.WearableType, arg.Name, arg.Description = fmv.Get_CreateInventoryItem_InventoryBlock(d)
 
+  arg.Name = dezeroize(arg.Name)
+  arg.Description = dezeroize(arg.Description)
+
   arg.AssetID = zero_uuid
   if not (arg.TransactionID == zero_uuid) then
     arg.AssetID = smv_state.transactions[arg.TransactionID].AssetID
   end
-
-  arg.Name = dezeroize(arg.Name)
-  arg.Description = dezeroize(arg.Description)
 
   print("TransactionID for create inventory item:", arg.TransactionID, "derived asset id", arg.AssetID)
 
@@ -677,6 +682,9 @@ function smv_update_inventory_item(sess, d)
          i.BaseMask, i.OwnerMask, i.GroupMask, i.EveryoneMask, i.NextOwnerMask, 
 	 i.GroupOwned, i.TransactionID, i.Type, i.InvType, i.Flags, i.SaleType, i.SalePrice,
 	 i.Name, i.Description, i.CreationDate = fmv.Get_UpdateInventoryItem_InventoryDataBlock(d, j)
+  
+    i.Name = dezeroize(i.Name)
+    i.Description = dezeroize(i.Description)
 
     print("Update item ", i.ItemID)
 
@@ -713,90 +721,72 @@ function smv_create_inventory_folder(sess, d)
                ParentID, Type, Name, smv_cb_inventory_folder_created)
 end
 
-function smv_fetch_inventory_descendents(sess, d)
+function smv_cb_inventory_descendents(a, desc)
+  local sess = smv_get_session(a.SessionID)
+  local AgentID, SessionID = sess.AgentID, sess.SessionID
+
   local p = fmv.packet_new()
-  local AgentID, SessionID = fmv.Get_FetchInventoryDescendents_AgentData(d)
-  local FolderID, OwnerID, SortOrder, FetchFolders, FetchItems =
-                   fmv.Get_FetchInventoryDescendents_InventoryData(d)
-  local inv = smv_state.inventory[AgentID]
   local total_folder_descendents = 0
   local total_item_descendents = 0
-  print ("Fetch Descendents for ", FolderID, FetchFolders, FetchItems, SortOrder)
 
   fmv.InventoryDescendentsHeader(p)
-  -- folder descendents will go here
-  if FetchFolders then
-    local folders = invloc_retrieve_child_folders(AgentID, FolderID)
+  print("DescendentsX", desc)
 
-    for i, item in ipairs(folders) do
-      if item.IsFolder then
-        fmv.InventoryDescendents_FolderDataBlock(p, total_folder_descendents,
-	  item.ID, -- FolderID
-	  item.FolderID, -- PArentID
-	  item.Type, -- Type
-	  item.Name .. "\000") -- Name
-	total_folder_descendents = total_folder_descendents + 1
-      end
+  for i, item in ipairs(desc.Folders) do
+    if item.IsFolder then
+      fmv.InventoryDescendents_FolderDataBlock(p, total_folder_descendents,
+	item.ID, -- FolderID
+	item.FolderID, -- PArentID
+	item.Type, -- Type
+	enzeroize(item.Name)) -- Name
+      total_folder_descendents = total_folder_descendents + 1
     end
   end
   fmv.InventoryDescendents_FolderDataBlockSize(p, total_folder_descendents)
   print("Total Folder Descendents:", total_folder_descendents)
 
-  print("FetchItems: ", FetchItems)
-  if FetchItems then
-    local items = invloc_retrieve_child_items(AgentID, FolderID)
-    print("Retrieved ", #items, "child items")
-    for i, item in ipairs(items) do
-      if not item.IsFolder then
-        local InvType = item.InvType
-	if not InvType then
-	  InvType = item.Type
-	end
-	local Description = item.Description
-	if not Description then
-	  Description = "default desc"
-	end
-        fmv.InventoryDescendents_ItemDataBlock(p, total_item_descendents, 
+  for i, item in ipairs(desc.Items) do
+    if not item.IsFolder then
+      fmv.InventoryDescendents_ItemDataBlock(p, total_item_descendents, 
           item.ItemID, -- ItemID
   	  item.FolderID, -- FolderID
-	  AgentID, -- CreatorID
-	  AgentID, -- OwnerID
-	  zero_uuid, -- GroupID
-	  0x3fffffff, -- BaseMask
-	  0x3fffffff, -- OwnerMask
-	  0x3fffffff, -- GroupMask
-	  0x3fffffff, -- EveryoneMask
-	  0x3fffffff, -- NextOwnerMask
-	  false, -- GroupOwned
+	  item.CreatorID or AgentID, -- CreatorID
+	  item.OwnerID or AgentID, -- OwnerID
+	  item.GroupID, -- GroupID
+	  item.BaseMask, -- BaseMask
+	  item.OwnerMask, -- OwnerMask
+	  item.GroupMask, -- GroupMask
+	  item.EveryoneMask, -- EveryoneMask
+	  item.NextOwnerMask, -- NextOwnerMask
+	  item.GroupOwned, -- GroupOwned
 	  item.AssetID, -- AssetID
 	  item.Type, -- Type
-	  InvType, -- InvType
-	  0x3fffffff, -- Flags
-	  0, -- SaleType
-	  0, -- SalePrice
-	  item.Name .. "\000", -- Name
-	  Description .. "\000", -- Description
-	  0, -- CreationDate
+	  item.InvType, -- InvType
+	  item.Flags, -- Flags
+	  item.SaleType, -- SaleType
+	  item.SalePrice, -- SalePrice
+	  enzeroize(item.Name), -- Name
+	  enzeroize(item.Description), -- Description
+	  item.CreationDate, -- CreationDate
 	  0) -- CRC
-        total_item_descendents = total_item_descendents + 1
-	if (total_item_descendents > 10) then
-          fmv.InventoryDescendents_ItemDataBlockSize(p, total_item_descendents)
-          fmv.InventoryDescendents_AgentData(p, AgentID, FolderID, OwnerID, 
+      total_item_descendents = total_item_descendents + 1
+      if (total_item_descendents > 10) then
+        fmv.InventoryDescendents_ItemDataBlockSize(p, total_item_descendents)
+        fmv.InventoryDescendents_AgentData(p, AgentID, a.arg.FolderID, a.arg.OwnerID, 
               1, -- Version
               total_folder_descendents + total_item_descendents) -- Descendents
-          smv_send_then_unlock(sess, p)
-	  print("Sent one descendants packet")
-	  total_item_descendents = 0
-	  total_folder_descendents = 0
-          p = fmv.packet_new()
-          fmv.InventoryDescendentsHeader(p)
-          fmv.InventoryDescendents_FolderDataBlockSize(p, total_folder_descendents)
-	end
+        smv_send_then_unlock(sess, p)
+        print("Sent one descendants packet")
+        total_item_descendents = 0
+        total_folder_descendents = 0
+        p = fmv.packet_new()
+        fmv.InventoryDescendentsHeader(p)
+        fmv.InventoryDescendents_FolderDataBlockSize(p, total_folder_descendents)
       end
     end
   end
   fmv.InventoryDescendents_ItemDataBlockSize(p, total_item_descendents)
-  fmv.InventoryDescendents_AgentData(p, AgentID, FolderID, OwnerID, 
+  fmv.InventoryDescendents_AgentData(p, AgentID, a.arg.FolderID, a.arg.OwnerID, 
       1, -- Version
       total_folder_descendents + total_item_descendents) -- Descendents
   
@@ -806,11 +796,24 @@ function smv_fetch_inventory_descendents(sess, d)
   fmv.InventoryDescendentsHeader(p)
   fmv.InventoryDescendents_FolderDataBlockSize(p, 0)
   fmv.InventoryDescendents_ItemDataBlockSize(p, 0)
-  fmv.InventoryDescendents_AgentData(p, AgentID, FolderID, OwnerID, 
+  fmv.InventoryDescendents_AgentData(p, AgentID, a.arg.FolderID, a.arg.OwnerID, 
      1, -- Version
      0) -- Descendents
   smv_send_then_unlock(sess, p)
 end
+
+
+function smv_fetch_inventory_descendents(sess, d)
+  local AgentID, SessionID = fmv.Get_FetchInventoryDescendents_AgentData(d)
+  local arg = {}
+  arg.FolderID, arg.OwnerID, arg.SortOrder, arg.FetchFolders, arg.FetchItems =
+                   fmv.Get_FetchInventoryDescendents_InventoryData(d)
+
+  print ("Fetch Descendents for ", arg.FolderID, arg.FetchFolders, arg.FetchItems, arg.SortOrder)
+
+  inventory_client_fetch_inventory_descendents(SessionID, AgentID, arg, smv_cb_inventory_descendents)
+end
+
 
 function smv_agent_cached_texture(sess, d)
   local p = fmv.packet_new()

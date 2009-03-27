@@ -161,3 +161,31 @@ function inventory_client_create_folder(SessionID, AgentID, FolderID, ParentID, 
   int_inventory_client_rcmd(AgentID, cmd, uuid, int_cb_inventory_client_create_folder)
 end
 
+function int_cb_inventory_client_fetch_descendents(idx, d)
+  local http_code, body, http_message = http_client_parse_reply(idx)
+  print("Create descentends!!!", http_code, http_message, body)
+  if http_code == 200 then
+    local res = Json.Decode(body)
+    if res.Result == "OK" then
+      local a = async_get(inventory_client_sockets[idx].AsyncID)
+      pretty("DescendentsY", res.Descendents)
+      a.Callback(a, res.Descendents)
+    else
+      fixme_error("No error-callback... FIXME!")
+    end
+  else
+    fixme_error("No error-callback... FIXME!")
+  end
+end
+
+function inventory_client_fetch_inventory_descendents(SessionID, AgentID, arg, cb)
+  local cmd = {}
+  local uuid, a = int_inventory_client_mkasync(SessionID, AgentID, cb)
+  cmd.Command = "fetch_descendents"
+  cmd.AgentID = AgentID
+  cmd.arg = arg
+  a.arg = arg
+  int_inventory_client_rcmd(AgentID, cmd, uuid, int_cb_inventory_client_fetch_descendents)
+end
+
+

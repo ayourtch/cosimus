@@ -82,6 +82,22 @@ function inventory_server_http(uri, appdata, dh, dd)
         local item = invloc_create_inventory_item_x(req.AgentID, req.FolderID, req.arg)
 	res.Result = "OK"
 	res.Item = item
+      elseif req.Command == "fetch_descendents" then
+        -- arg.FolderID, arg.OwnerID, arg.SortOrder, arg.FetchFolders, arg.FetchItems
+        res.Result = "OK"
+	res.Descendents = {}
+	local desc = res.Descendents
+
+	if req.arg.FetchFolders then
+	  desc.Folders = invloc_retrieve_child_folders(req.AgentID, req.arg.FolderID)
+	else
+	  desc.Folders = {}
+	end
+	if req.arg.FetchItems then
+	  desc.Items = invloc_retrieve_child_items(req.AgentID, req.arg.FolderID)
+	else
+	  desc.Items = {}
+	end
       elseif req.Command == "update_wearables" then
         local w = {}
 	w.WearablesList = req.arg

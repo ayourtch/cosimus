@@ -93,31 +93,38 @@ function invloc_create_skeleton(AgentID)
   return root_id
 end
 
-function invloc_retrieve_child_elements(AgentID, RootID, FieldName)
+function invloc_retrieve_child_elements(AgentID, RootID, GetFolders)
   local folders = {}
   local root = int_inventory_get_item_from(AgentID, RootID)
+  local FieldName = nil
+  if GetFolders then
+    FieldName = "ChildFolders"
+  else
+    FieldName = "ChildItems"
+  end
   if root then
-    folders[1+#folders] = root
+    pretty("root", root)
+    table.insert(folders, root) 
     for i, uuid in ipairs(root[FieldName]) do
       local f = int_inventory_get_item_from(AgentID, uuid)
-      folders[1+#folders] = f
+      table.insert(folders, f)
     end
   end
   return folders
 end
 
 function invloc_retrieve_child_folders(AgentID, RootID)
-  local ch = invloc_retrieve_child_elements(AgentID, RootID, 'ChildFolders')
+  local ch = invloc_retrieve_child_elements(AgentID, RootID, true)
   if #ch == 0 then
-    ch = invloc_retrieve_child_elements("library", RootID, 'ChildFolders')
+    ch = invloc_retrieve_child_elements("library", RootID, true)
   end
   return ch
 end
 
 function invloc_retrieve_child_items(AgentID, RootID)
-  local ch = invloc_retrieve_child_elements(AgentID, RootID, 'ChildItems')
+  local ch = invloc_retrieve_child_elements(AgentID, RootID, false)
   if #ch == 0 then
-    ch = invloc_retrieve_child_elements("library", RootID, 'ChildItems')
+    ch = invloc_retrieve_child_elements("library", RootID, false)
   end
   return ch
 end
@@ -159,9 +166,13 @@ function invloc_create_inventory_item_x(AgentID, FolderID, arg)
   end
 
   -- Default settings: FIXME to get from config ?
-
-  i.CreatorID = AgentID
-  i.OwnerID = AgentID
+  if AgentID == "library" then
+    i.CreatorID = nil
+    i.OwnerID = nil
+  else
+    i.CreatorID = AgentID
+    i.OwnerID = AgentID
+  end
   i.GroupID = zero_uuid
   i.BaseMask = BaseMask
   i.OwnerMask = BaseMask
