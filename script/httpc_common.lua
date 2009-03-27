@@ -42,7 +42,7 @@ function http_client_parse_reply(idx)
   if(sep_idx_end) then
     body = string.sub(reply, sep_idx_end + 1)
   end
-  return http_code, body, http_message
+  return tonumber(http_code), body, http_message
 end
 
 function http_client_make_req(addr, port, method, url, postdata, uuid, chunk_cb, all_cb)

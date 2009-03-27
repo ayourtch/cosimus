@@ -18,7 +18,9 @@ function int_async_getnext(place)
 end
 
 function int_async_get(uuid, place)
-  return place[uuid]
+  local a = place[uuid]
+  -- print("Async get for ", uuid, a)
+  return a
 end
 
 

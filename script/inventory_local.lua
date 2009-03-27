@@ -24,6 +24,10 @@ function int_inventory_get_item_from(AgentID, key)
   return inventory[key]
 end
 
+function invloc_dump()
+  pretty("fullinv", smv_state["local_inventory"])
+end
+
 function invloc_create_folder(AgentID, ID, parent, FolderType, FolderName, nocheck)
   local f = {}
   local uuid = ID
@@ -32,6 +36,7 @@ function invloc_create_folder(AgentID, ID, parent, FolderType, FolderName, noche
     uuid = fmv.uuid_create()
   end
   f.IsFolder = true
+  f.ItemID = uuid
   f.ID = uuid
   f.ChildFolders = {}
   f.ChildItems = {}
@@ -127,9 +132,9 @@ function invloc_create_inventory_item_x(AgentID, FolderID, arg)
   local Flags = 0x3fffffff
 
   local i = {}
-  local uuid = fmv.uuid_create()
+  local uuid = arg.ItemID or fmv.uuid_create()
   i.AssetID = arg.AssetID
-  i.ID = uuid
+  i.ItemID = uuid
   i.Type = arg.Type
   i.InvType = arg.InvType
   i.WearableType = arg.WearableType
@@ -173,8 +178,9 @@ function invloc_create_inventory_item_x(AgentID, FolderID, arg)
   return i
 end
 
-function invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID, Type, InvType, WearableType, Name, Description)
+function invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID, Type, InvType, WearableType, Name, Description, MaybeItemID)
   local arg = {}
+  arg.ItemID = MaybeItemID
   arg.TransactionID = TransactionID
   arg.AssetID = AssetID
   arg.Type = Type
@@ -185,7 +191,7 @@ function invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID,
   local i = nil
   i = invloc_create_inventory_item_x(AgentID, FolderID, arg)
   if i then
-    return i.ID
+    return i.ItemID
   else
     return zero_uuid
   end
@@ -193,6 +199,11 @@ end
 
 function invloc_retrieve_inventory_item(AgentID, uuid)
   local item = int_inventory_get_item_from(AgentID, uuid)
+  if not item then
+    item = int_inventory_get_item_from("library", uuid)
+    print("Failed search for ", uuid)
+  end
+  pretty("item_lib", item)
   return item
 end
 

@@ -6,7 +6,7 @@ inventory_client_sockets = {}
 
 function int_inventory_client_http_req(reqtype, uri, postdata, async_uuid, cb)
   local ic = config.inventory_client
-  return http_client_make_req(ic.ServerAddress, ic.ServerPort, reqtype, uri, postdata, uuid, nil, cb)
+  return http_client_make_req(ic.ServerAddress, ic.ServerPort, reqtype, uri, postdata, async_uuid, nil, cb)
 end
 
 function int_inventory_client_rcmd(AgentID, cmd, async_uuid, cb)
@@ -61,6 +61,7 @@ function inventory_client_create_item(SessionID, AgentID, arg, cb)
   a.SessionID = SessionID
   a.Callback = cb
   a.CallbackID = assert(arg.CallbackID)
+  a.TransactionID = assert(arg.TransactionID)
 
   local uuid = async_put(a)
   local cmd = {}
@@ -112,6 +113,25 @@ function inventory_client_update_items(SessionID, AgentID, items, cb)
   int_inventory_client_rcmd(AgentID, cmd, uuid, int_cb_inventory_client_update)
   return uuid
 end
+
+
+function int_cb_inventory_client_update_default_wearables(idx, d)
+  local http_code, body, http_message = http_client_parse_reply(idx)
+  print("Got a reply after wearables update", http_code, http_message, body)
+  -- there was a notification only, no callback needed.
+  -- FIXME: we need to handle the errors.
+end
+
+function inventory_client_update_default_wearables(SessionID, AgentID, wearables)
+  local cmd = {}
+  local uuid, a = int_inventory_client_mkasync(SessionID, AgentID, cb)
+  cmd.AgentID = AgentID
+  cmd.Command = "update_wearables"
+  cmd.arg = wearables
+  int_inventory_client_rcmd(AgentID, cmd, uuid, int_cb_inventory_client_update_default_wearables)
+  return uuid
+end
+
 
 function int_cb_inventory_client_create_folder(idx, d)
   local http_code, body, http_message = http_client_parse_reply(idx)

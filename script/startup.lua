@@ -121,6 +121,8 @@ function pretty (name, value, saved)
             pretty(fieldname, v, saved)
           end
         end
+      elseif type(value) == "function" then
+        print "[fixme: function]\n"
       else
         error("cannot save a " .. type(value))
       end

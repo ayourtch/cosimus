@@ -290,79 +290,61 @@ function smv_cb_wearables_received(a)
   local wearables = a.Wearables
   local BaseMask = 0x3fffffff -- NextOwnerMask
   local Flags = 0x3fffffff
-  if not wearables then
-    -- good place to put the "default wearables" here
-    wearables = {}
-  end
-  for i=0,12 do
-    if not wearables[i+1] then
-      local item = {}
-      item.ItemID = zero_uuid
-      item.AssetID = zero_uuid
-      wearables[i+1] = item
-    end
-  end
+  assert(wearables)
 
-  --wearables[13] = nil
-  --wearables[12] = nil
-
-  --[[
   local p = fmv.packet_new()
+  pretty("xxxxx", a)
+
   fmv.UpdateCreateInventoryItemHeader(p)
   fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
       true, -- SimApproved
-      zero_uuid -- TransactionID
+      0 -- TransactionID
     )
-  for i, item in ipairs(wearables) do
-    print("Update-create #", i)
-    fmv.UpdateCreateInventoryItem_InventoryDataBlock(p, i, 
-      item.ItemID, 
-      loginserver_get_inventory_root(AgentID), 
-      0,
-      AgentID, -- CreatorID
-      AgentID, -- OwnerID
-      zero_uuid, -- GroupID
-      BaseMask, -- BaseMask
-      BaseMask, -- OwnerMask
-      BaseMask, -- GroupMask
-      BaseMask, -- EveryoneMask
-      BaseMask, -- NextOwnerMask
-      false, -- GroupOwned
-      item.AssetID, -- AssetID
-      13, -- Type
-      18, -- InvType
-      Flags, -- Flags
-      0, -- SaleType,
-      123, -- SalePrice
-      "Test " .. tostring(i) .. " " .. item.ItemID .. "\000", -- Name
-      "Test Desc\000", -- Description
-      100000, -- CreationDate
-      0 -- CRC
-    )
+  local totalitems = 0
+  for index, i in ipairs(wearables) do
+    if i.ItemID == zero_uuid then
+      -- do nothing
+    else
+      fmv.UpdateCreateInventoryItem_InventoryDataBlock(p, totalitems, 
+	      i.ItemID, 
+	      i.FolderID, 
+	      0,
+	      i.CreatorID, -- CreatorID
+	      i.OwnerID, -- OwnerID
+	      i.GroupID, -- GroupID
+	      i.BaseMask, -- BaseMask
+	      i.OwnerMask, -- OwnerMask
+	      i.GroupMask, -- GroupMask
+	      i.EveryoneMask, -- EveryoneMask
+	      i.NextOwnerMask, -- NextOwnerMask
+	      i.GroupOwned, -- GroupOwned
+	      i.AssetID, -- AssetID
+	      i.Type, -- Type
+	      i.InvType, -- InvType
+	      i.Flags, -- Flags
+	      i.SaleType, -- SaleType,
+	      i.SalePrice, -- SalePrice
+	      enzeroize(i.Name), -- Name
+	      enzeroize(i.Description), -- Description
+	      i.CreationDate, -- CreationDate
+	      0 -- CRC
+       )
+      totalitems = totalitems + 1
+    end
   end
-  fmv.UpdateCreateInventoryItem_InventoryDataBlockSize(p,11)
+  fmv.UpdateCreateInventoryItem_InventoryDataBlockSize(p,totalitems)
   smv_send_then_unlock(sess, p)
-  --]]
 
   local p = fmv.packet_new()
   fmv.AgentWearablesUpdateHeader(p)
-  fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 0)
-  total_wearables = 0
+  fmv.AgentWearablesUpdate_AgentData(p, AgentID, SessionID, 1)
   for i, item in ipairs(wearables) do
     print("Wearable #", i, item.ItemID, item.AssetID)
-    if item then
-      fmv.AgentWearablesUpdate_WearableDataBlock(p, i-1, 
+    fmv.AgentWearablesUpdate_WearableDataBlock(p, i-1, 
 	    item.ItemID, -- ItemID
 	    item.AssetID, -- AssetID
 	    i-1 -- WearableType
 	  )
-    else
-      fmv.AgentWearablesUpdate_WearableDataBlock(p, i-1, 
-	  zero_uuid, -- ItemID
-	  zero_uuid, -- AssetID
-	  i-1 -- WearableType
-	)
-    end
     total_wearables = total_wearables + 1 
   end
   print("Total wearables: ", total_wearables)
@@ -616,13 +598,15 @@ function smv_asset_upload_request(sess, d)
 end
 
 function smv_cb_inventory_item_created(a, Item)
+  local sess = smv_get_session(a.SessionID)
   local i = Item
+  local p = fmv.packet_new()
   print("Got Item/Asset IDs from smv_inv_create_inventory_item:", i.ItemID, i.AssetID)
 
   fmv.UpdateCreateInventoryItemHeader(p)
-  fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
+  fmv.UpdateCreateInventoryItem_AgentData(p, a.AgentID,
       true, -- SimApproved
-      TransactionID -- TransactionID
+      a.TransactionID -- TransactionID
     )
   fmv.UpdateCreateInventoryItem_InventoryDataBlockSize(p,1)
   fmv.UpdateCreateInventoryItem_InventoryDataBlock(p, 0, 
@@ -630,7 +614,7 @@ function smv_cb_inventory_item_created(a, Item)
       i.FolderID, 
       a.CallbackID,
       i.CreatorID, -- CreatorID
-      i.AgentID, -- OwnerID
+      i.OwnerID, -- OwnerID
       i.GroupID, -- GroupID
       i.BaseMask, -- BaseMask
       i.OwnerMask, -- OwnerMask
@@ -694,15 +678,25 @@ function smv_update_inventory_item(sess, d)
 	 i.GroupOwned, i.TransactionID, i.Type, i.InvType, i.Flags, i.SaleType, i.SalePrice,
 	 i.Name, i.Description, i.CreationDate = fmv.Get_UpdateInventoryItem_InventoryDataBlock(d, j)
 
-    i.ID = i.ItemID
+    print("Update item ", i.ItemID)
+
     if not (TransactionID == zero_uuid) then
       i.AssetID = smv_state.transactions[TransactionID].AssetID
     end
     table.insert(items.Items, i)
     table.insert(items.CallbackIDs, CallbackID)
   end
-  
-  inventory_client_item_update(SessionID, AgentID, items, smv_cb_update_inventory_item)
+  inventory_client_update_items(SessionID, AgentID, items, smv_cb_update_inventory_item)
+end
+
+function smv_copy_inventory_item(sess, d)
+  local AgentID, SessionID = fmv.Get_CopyInventoryItem_AgentData(d)
+  local sz = fmv.Get_CopyInventoryItem_InventoryDataBlockSize(d)
+  for i=0,sz-1 do
+    local item = {}
+    item.CallbackID, item.OldAgentID, item.OldItemID, item.NewFolderID, item.NewName = fmv.Get_CopyInventoryItem_InventoryDataBlock(d, i)
+    pretty("Copy item", item)
+  end
 
 end
 
@@ -763,7 +757,7 @@ function smv_fetch_inventory_descendents(sess, d)
 	  Description = "default desc"
 	end
         fmv.InventoryDescendents_ItemDataBlock(p, total_item_descendents, 
-          item.ID, -- ItemID
+          item.ItemID, -- ItemID
   	  item.FolderID, -- FolderID
 	  AgentID, -- CreatorID
 	  AgentID, -- OwnerID
@@ -837,25 +831,15 @@ end
 
 function smv_agent_is_now_wearing(sess, d)
   local sz = fmv.Get_AgentIsNowWearing_WearableDataBlockSize(d)
-  local wearables = invloc_retrieve_inventory_item(sess.AgentID, "wearables")
-  if not wearables then
-    wearables = {}
-  end
+  local  wearables = {}
   print("Now wearing:", sz)
   for i=0,sz-1 do
-    local ItemID, WearableType = fmv.Get_AgentIsNowWearing_WearableDataBlock(d, i)
-    local item = invloc_retrieve_inventory_item(sess.AgentID, ItemID)
-    if not item then
-      item = {}
-      item.AssetID = zero_uuid
-    end
-    print("Wearable #", i, ItemID, WearableType, item.AssetID)
     local w = {}
-    w.ItemID = ItemID
-    w.AssetID = item.AssetID
-    wearables[i+1] = w
+    w.ItemID, w.WearableType = fmv.Get_AgentIsNowWearing_WearableDataBlock(d, i)
+    print("Wearable #", i, w.ItemID, w.WearableType)
+    table.insert(wearables, w)
   end
-  invloc_set_inventory_item(sess.AgentID, "wearables", wearables)
+  inventory_client_update_default_wearables(sess.SessionID, sess.AgentID, wearables)
 end
 
 function smv_agent_set_appearance(sess, d)
@@ -935,7 +919,8 @@ function smv_packet(idx, d)
         smv_create_inventory_folder(sess, d)
       elseif gid == "UpdateInventoryItem" then
         smv_update_inventory_item(sess, d)
-        -- FIXME!!!!
+      elseif gid == "CopyInventoryItem" then
+        smv_copy_inventory_item(sess, d)
       elseif gid == "FetchInventoryDescendents" then
         smv_fetch_inventory_descendents(sess, d)
       elseif gid == "TransferRequest" then
