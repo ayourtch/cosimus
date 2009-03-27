@@ -322,6 +322,8 @@ lua_fn_get_http_data(lua_State *L)
     if( (appdata = http_dbuf_get_appdata(d)) ) {
       if(strcmp(key, "querystring") == 0) {
         lua_pushstring(L, appdata->http_querystring);
+      } else if(strcmp(key, "content-type") == 0) {
+        lua_pushstring(L, appdata->content_type);
       } else if(strcmp(key, "referer") == 0) {
         lua_pushstring(L, appdata->http_referer);
       } else if(strcmp(key, "http_11") == 0) {

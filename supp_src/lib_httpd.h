@@ -28,6 +28,7 @@ typedef struct appdata_http_t_tag {
   char *http_path;              /* requested path */
   char *http_querystring;       /* query string */
   char *http_referer;
+  char *content_type;
   int http_11;                  /* is it http_1.1 ? */
   uint32_t post_content_length;
   dbuf_t *post_content_buf;

@@ -145,6 +145,10 @@ appdata_http_destructor(void *dbuf)
     free(ad->http_referer);
     ad->http_referer = NULL;
   }
+  if(ad->content_type) {
+    free(ad->content_type);
+    ad->content_type = NULL;
+  }
 
   if(ad->post_content_buf) {
     dunlock(ad->post_content_buf);
@@ -549,6 +553,9 @@ http_parse_headers(int idx, int start, int old_dsize)
             }
             if(strcmp(key, "referer") == 0) {
               ad->http_referer = strdup(val);
+            }
+            if(strcmp(key, "content-type") == 0) {
+              ad->content_type = strdup(val);
             }
             if(strcmp(key, "content-length") == 0) {
               ad->post_content_length = atoi(val);
