@@ -58,6 +58,12 @@ function deserialize(dbuf)
   assert(loadstring(su.dgetstr(dbuf)))()
 end
 
+
+function serialize_llsd(data)
+  local d = su.dalloc(8192)
+   
+end
+
 local xxxxtest = [[
 t = {}
 t['"'] = true

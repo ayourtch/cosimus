@@ -174,22 +174,11 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
 end
 
 print("Login server!")
-junk = [[
-a1 = "\255\255\255\255"
-a0 = "\000\000\000\000"
-a01 = "\085\085\085\085"
-a10 = "\170\170\170\170"
-print(binstr(a0))
-print(binstr(a1))
-print(binstr(a01))
-print(binstr(a10))
-print(hexstr(andl(a1,a0)))
-print(hexstr(xorl(a1,a10 .. a10)))
-]]
 
 function http(uri, appdata, dh, dd)
   local qstring = su.get_http_data(appdata, "querystring")
   local pdata = su.get_http_data(appdata, "post_data")
+  local ctype = su.get_http_data(appdata, "content-type")
 
   local pp = function(...) 
     su.dstrcat(dd, ...)
@@ -217,6 +206,10 @@ function http(uri, appdata, dh, dd)
     file:write(pdata)
     file:write("\n")
     file:close()
+  elseif uri == "/login" and pdata and ctype == "application/xml+llsd" then
+    print "LLSD login!"
+    local req = parse_llsd(pdata)
+    pretty("llsd-parsed", req)
   elseif uri == "/login" and pdata then -- and string.match(pdata, "<?xml ") == 1 then
     print "Login!"
     local req = parse_xmlrpc_req(pdata)

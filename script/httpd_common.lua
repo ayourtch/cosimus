@@ -120,3 +120,48 @@ function dprint_xml_response(resp, dd)
   pp("</param></params></methodResponse>\n")
 end
 
+function parse_llsd_piece(p, indent)
+  local res = nil
+  indent = indent or 1
+  pretty(string.rep(" ", indent) .. "req_val", p)
+  
+  if not p then
+    return nil
+  end
+  if p.label == "map" then
+    res = {}
+    local key
+    for i, el in ipairs(p) do
+      if el.label == "key" then
+        key = el[1]
+        print(string.rep(" ", indent) .. "Set key to " .. key)
+      else 
+        res[key] = parse_llsd_piece(el, indent+1)
+      end
+    end 
+  elseif p.label == "array" then
+    res = {}
+    for i, el in ipairs(p) do
+      table.insert(res, parse_llsd_piece(el))
+    end
+  elseif p.label == "string" then
+    res = p[1]
+  elseif p.label == "boolean" then
+    res = (p[1] == "1")
+  end
+  -- pretty(string.rep(" ", indent) .. "return_res", res)
+  return res
+end
+
+function parse_llsd(data)
+  local x = parse_xml(data)
+  -- pretty("llsd", x)
+  local res = {}
+  if x[1].label == "llsd" then
+    for i, el in ipairs(x[1]) do
+      table.insert(res, parse_llsd_piece(el)) 
+    end
+  end
+  return res
+end
+
