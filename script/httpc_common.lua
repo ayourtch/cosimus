@@ -62,10 +62,14 @@ function http_client_make_req(addr, port, method, url, postdata, uuid, chunk_cb,
     return nil
   end
   pp(' ' .. url .. ' HTTP/1.0\r\n')
+  if(postdata) then
+    pp('Content-Length: ' .. tonumber(#postdata) .. "\r\n")
+  end
+  pp('\r\n')
   if postdata then
     pp(postdata)
   end
-  pp('\r\n\r\n')
+  pp('\r\n')
 
   local idx = su.sock_tcp_connect(addr, port, 
                                  "http_client_callback")

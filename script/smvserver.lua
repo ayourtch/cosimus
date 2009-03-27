@@ -303,9 +303,10 @@ function smv_cb_wearables_received(a)
     end
   end
 
-  wearables[13] = nil
-  wearables[12] = nil
+  --wearables[13] = nil
+  --wearables[12] = nil
 
+  --[[
   local p = fmv.packet_new()
   fmv.UpdateCreateInventoryItemHeader(p)
   fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
@@ -341,6 +342,7 @@ function smv_cb_wearables_received(a)
   end
   fmv.UpdateCreateInventoryItem_InventoryDataBlockSize(p,11)
   smv_send_then_unlock(sess, p)
+  --]]
 
   local p = fmv.packet_new()
   fmv.AgentWearablesUpdateHeader(p)
@@ -446,10 +448,10 @@ function smv_transfer_request(sess, d)
   local arg = {}
 
   arg.TransferID, arg.ChannelType, arg.SourceType, arg.Priority, arg.Params = fmv.Get_TransferRequest_TransferInfo(d)
-  arg.ItemID = fmv.uuid_from_bytes(arg.Params)
-  print("Transfer request#", arg.TransferID, "for item", arg.ItemID, "ChannelType", arg.ChannelType, "SourceType", arg.SourceType)
+  arg.AssetID = fmv.uuid_from_bytes(arg.Params)
+  print("Transfer request#", arg.TransferID, "for item", arg.AssetID, "ChannelType", arg.ChannelType, "SourceType", arg.SourceType)
   -- print("Priority", Priority, "Param len:", #Params)
-  asset_client_request_asset(sess.SessionID, arg.ItemID, arg, smv_cb_asset_client_asset)
+  asset_client_request_asset(sess.SessionID, arg.AssetID, arg, smv_cb_asset_client_asset)
 end
 
 function smv_uuid_name_request(sess, d)
@@ -573,6 +575,10 @@ function smv_agent_update_received(sess, d)
 
 end
 
+function smv_cb_asset_upload_complete(a)
+  print("Asset successfully uploaded to server!")
+end
+
 function smv_asset_upload_request(sess, d)
   -- local comment = [[
   local p = fmv.packet_new()
@@ -589,9 +595,11 @@ function smv_asset_upload_request(sess, d)
   newasset.Tempfile = Tempfile
   newasset.StoreLocal = StoreLocal
   newasset.AssetData = AssetData
+  newasset.AssetID = uuid
   if (#AssetData > 0) then
     fmv.AssetUploadCompleteHeader(p)
     fmv.AssetUploadComplete_AssetBlock(p, uuid, Type, 1)
+    asset_client_upload_asset(sess.SessionID, newasset, smv_cb_asset_upload_complete)
   else 
     fmv.RequestXferHeader(p)
     fmv.RequestXfer_XferID(p, 
@@ -624,15 +632,21 @@ function smv_create_inventory_item(sess, d)
   local CallbackID, FolderID, TransactionID, NextOwnerMask, Type, InvType, 
         WearableType, Name, Description = fmv.Get_CreateInventoryItem_InventoryBlock(d)
 
-  local ItemID = fmv.uuid_create()
   local BaseMask = 0x3fffffff -- NextOwnerMask
   local Flags = 0x3fffffff
 
   print("TransactionID for create inventory item:", TransactionID)
   print("FolderID", FolderID)
   print("CallbackID", CallbackID)
-  local ItemID, AssetID = smv_inv_create_inventory_item(AgentID, FolderID, 
+  local ItemID, AssetID
+  if FolderID == zero_uuid then
+    ItemID = zero_uuid
+    AssetID = zero_uuid
+  else 
+    ItemID, AssetID = smv_inv_create_inventory_item(AgentID, FolderID, 
                         TransactionID, Type, InvType, WearableType, Name, Description, true)
+  end
+  print("Got Item/Asset IDs from smv_inv_create_inventory_item:", ItemID, AssetID)
 
   fmv.UpdateCreateInventoryItemHeader(p)
   fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
@@ -824,8 +838,16 @@ function smv_agent_is_now_wearing(sess, d)
   print("Now wearing:", sz)
   for i=0,sz-1 do
     local ItemID, WearableType = fmv.Get_AgentIsNowWearing_WearableDataBlock(d, i)
-    print("Wearable #", i, ItemID, WearableType)
-    wearables[i+1] = ItemID
+    local item = invloc_retrieve_inventory_item(sess.AgentID, ItemID)
+    if not item then
+      item = {}
+      item.AssetID = zero_uuid
+    end
+    print("Wearable #", i, ItemID, WearableType, item.AssetID)
+    local w = {}
+    w.ItemID = ItemID
+    w.AssetID = item.AssetID
+    wearables[i+1] = w
   end
   invloc_set_inventory_item(sess.AgentID, "wearables", wearables)
 end
