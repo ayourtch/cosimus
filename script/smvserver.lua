@@ -615,38 +615,9 @@ function smv_asset_upload_request(sess, d)
   -- ]]
 end
 
-function smv_inv_create_inventory_item(AgentID, FolderID, TransactionID, Type, InvType, WearableType, Name, Description)
-  local AssetID = zero_uuid
-  if not (TransactionID == zero_uuid) then
-    AssetID = smv_state.transactions[TransactionID].AssetID
-  end
-  print("smv_inv_create_inventory_item: ", TransactionID)
-  local ItemID = invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID, Type, InvType, WearableType, Name, Description)
-  return ItemID, AssetID
-end
-
-function smv_create_inventory_item(sess, d)
-  -- local comment = [[
-  local p = fmv.packet_new()
-  local AgentID, SessionID = fmv.Get_CreateInventoryItem_AgentData(d)
-  local CallbackID, FolderID, TransactionID, NextOwnerMask, Type, InvType, 
-        WearableType, Name, Description = fmv.Get_CreateInventoryItem_InventoryBlock(d)
-
-  local BaseMask = 0x3fffffff -- NextOwnerMask
-  local Flags = 0x3fffffff
-
-  print("TransactionID for create inventory item:", TransactionID)
-  print("FolderID", FolderID)
-  print("CallbackID", CallbackID)
-  local ItemID, AssetID
-  if FolderID == zero_uuid then
-    ItemID = zero_uuid
-    AssetID = zero_uuid
-  else 
-    ItemID, AssetID = smv_inv_create_inventory_item(AgentID, FolderID, 
-                        TransactionID, Type, InvType, WearableType, Name, Description, true)
-  end
-  print("Got Item/Asset IDs from smv_inv_create_inventory_item:", ItemID, AssetID)
+function smv_cb_inventory_item_created(a, Item)
+  local i = Item
+  print("Got Item/Asset IDs from smv_inv_create_inventory_item:", i.ItemID, i.AssetID)
 
   fmv.UpdateCreateInventoryItemHeader(p)
   fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,
@@ -655,42 +626,70 @@ function smv_create_inventory_item(sess, d)
     )
   fmv.UpdateCreateInventoryItem_InventoryDataBlockSize(p,1)
   fmv.UpdateCreateInventoryItem_InventoryDataBlock(p, 0, 
-      ItemID, 
-      FolderID, 
-      CallbackID,
-      AgentID, -- CreatorID
-      AgentID, -- OwnerID
-      zero_uuid, -- GroupID
-      BaseMask, -- BaseMask
-      BaseMask, -- OwnerMask
-      BaseMask, -- GroupMask
-      BaseMask, -- EveryoneMask
-      NextOwnerMask, -- NextOwnerMask
-      false, -- GroupOwned
-      AssetID, -- AssetID
-      Type, -- Type
-      InvType, -- InvType
-      Flags, -- Flags
-      0, -- SaleType,
-      123, -- SalePrice
-      Name, -- Name
-      Description, -- Description
-      100000, -- CreationDate
+      i.ItemID, 
+      i.FolderID, 
+      a.CallbackID,
+      i.CreatorID, -- CreatorID
+      i.AgentID, -- OwnerID
+      i.GroupID, -- GroupID
+      i.BaseMask, -- BaseMask
+      i.OwnerMask, -- OwnerMask
+      i.GroupMask, -- GroupMask
+      i.EveryoneMask, -- EveryoneMask
+      i.NextOwnerMask, -- NextOwnerMask
+      i.GroupOwned, -- GroupOwned
+      i.AssetID, -- AssetID
+      i.Type, -- Type
+      i.InvType, -- InvType
+      i.Flags, -- Flags
+      i.SaleType, -- SaleType,
+      i.SalePrice, -- SalePrice
+      enzeroize(i.Name), -- Name
+      enzeroize(i.Description), -- Description
+      i.CreationDate, -- CreationDate
       0 -- CRC
     )
   smv_send_then_unlock(sess, p)
-  -- ]]
 end
 
+function smv_create_inventory_item(sess, d)
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_CreateInventoryItem_AgentData(d)
+  local arg = {}
+  
+  arg.CallbackID, arg.FolderID, arg.TransactionID, arg.NextOwnerMask, arg.Type, arg.InvType, 
+        arg.WearableType, arg.Name, arg.Description = fmv.Get_CreateInventoryItem_InventoryBlock(d)
+
+  arg.AssetID = zero_uuid
+  if not (arg.TransactionID == zero_uuid) then
+    arg.AssetID = smv_state.transactions[arg.TransactionID].AssetID
+  end
+
+  arg.Name = dezeroize(arg.Name)
+  arg.Description = dezeroize(arg.Description)
+
+  print("TransactionID for create inventory item:", arg.TransactionID, "derived asset id", arg.AssetID)
+
+  inventory_client_create_item(SessionID, AgentID, arg, smv_cb_inventory_item_created)
+end
+
+function smv_cb_update_inventory_item(a)
+  print("Update inventory item done!")
+end
 
 function smv_update_inventory_item(sess, d)
   local AgentID, SessionID, TransactionID = fmv.Get_UpdateInventoryItem_AgentData(d)
   local sz = fmv.Get_UpdateInventoryItem_InventoryDataBlockSize(d)
+  local items = {}
+  items.Items = {}
+  items.CallbackIDs = {}
 
   print("Update inventory item size", sz, "transaction id", TransactionID)
   for j=0,sz-1 do
     local i = {}
-    i.ItemID, i.FolderID, i.CallbackID, i.CreatorID, i.OwnerID, i.GroupID, 
+    local CallbackID
+
+    i.ItemID, i.FolderID, CallbackID, i.CreatorID, i.OwnerID, i.GroupID, 
          i.BaseMask, i.OwnerMask, i.GroupMask, i.EveryoneMask, i.NextOwnerMask, 
 	 i.GroupOwned, i.TransactionID, i.Type, i.InvType, i.Flags, i.SaleType, i.SalePrice,
 	 i.Name, i.Description, i.CreationDate = fmv.Get_UpdateInventoryItem_InventoryDataBlock(d, j)
@@ -699,18 +698,25 @@ function smv_update_inventory_item(sess, d)
     if not (TransactionID == zero_uuid) then
       i.AssetID = smv_state.transactions[TransactionID].AssetID
     end
-    invloc_update_inventory_item(AgentID, i.ItemID, i)
-    
+    table.insert(items.Items, i)
+    table.insert(items.CallbackIDs, CallbackID)
   end
+  
+  inventory_client_item_update(SessionID, AgentID, items, smv_cb_update_inventory_item)
 
+end
+
+function smv_cb_inventory_folder_created(a)
+  print("The server has created a folder")
 end
 
 function smv_create_inventory_folder(sess, d)
   local p = fmv.packet_new()
   local AgentID, SessionID = fmv.Get_CreateInventoryFolder_AgentData(d)
   local FolderID, ParentID, Type, Name = fmv.Get_CreateInventoryFolder_FolderData(d)
-  invloc_create_folder(AgentID, FolderID, ParentID, Type, Name)
-  print("Create folder of type ", Type, " parent ", ParentID, " name: ", Name)
+  print("Creating folder of type ", Type, " parent ", ParentID, " name: ", Name)
+  inventory_client_create_folder(SessionID, AgentID, FolderID, 
+               ParentID, Type, Name, smv_cb_inventory_folder_created)
 end
 
 function smv_fetch_inventory_descendents(sess, d)

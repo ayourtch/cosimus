@@ -20,6 +20,11 @@ function inventory_server_http(uri, appdata, dh, dd)
     i.AssetID = assetid
     return i
   end
+
+  local json_header = function(dh)
+    su.dstrcat(dh, "Content-Type: text/json\r\n")
+  end
+
   print("Inventory server request for ", uri)
 
   if uri == "/" then
@@ -44,8 +49,45 @@ function inventory_server_http(uri, appdata, dh, dd)
         inv[i] = ii(zero_uuid, zero_uuid)
       end
     end
-    su.dstrcat(dh, "Content-Type: text/json\r\n")
+    json_header(dh)
     su.dstrcat(dd, Json.Encode(inv))
+  elseif string.match(uri, "^/inventory/") then
+    -- uuid of the agent 
+    local uuid = string.gsub(uri, "^/inventory/", "")
+    if pdata then
+      print("Trying to store the inventory:", pdata)
+      local req = Json.Decode(pdata)
+      local res = {}
+      if req.Command == "create" then
+        local item = invloc_create_inventory_item_x(req.AgentID, req.FolderID, req.arg)
+	json_header(dh)
+	res.Result = "OK"
+	res.Item = item
+      elseif req.Command == "update" then
+        -- group update items, arg is an array of items
+	res.Result = "OK"
+	res.Items = {}
+	for item in req.arg do
+	  table.insert(res.Items, invloc_update_inventory_item(req.AgentID, item.ItemID, item))
+	end
+      elseif req.Command == "retrieve" then
+        local item = invloc_retrieve_inventory_item(req.AgentID, req.ItemID)
+	if item then
+	  res.Result = "OK"
+	  res.Item = item
+	else 
+	  res.Result = "ERROR"
+	  res.ErrorText = "Item not found"
+	end
+      else
+        res.Result = "ERROR"
+	res.ErrorText = "Command not implemented"
+      end
+      json_header(dh)
+      su.dstrcat(dd, Json.Encode(res))
+    else
+      print("Unimplemented yet: get inventory")
+    end
   else 
     su.dstrcat(dh, "HTTP/1.0 404 Not Found\r\n\r\n")
   end

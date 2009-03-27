@@ -122,16 +122,19 @@ function invloc_retrieve_skeleton(AgentID, RootID)
   return invloc_retrieve_child_folders(AgentID, RootID)
 end
 
-function invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID, Type, InvType, WearableType, Name, Description)
+function invloc_create_inventory_item_x(AgentID, FolderID, arg)
+  local BaseMask = 0x3fffffff 
+  local Flags = 0x3fffffff
+
   local i = {}
   local uuid = fmv.uuid_create()
-  i.AssetID = AssetID
+  i.AssetID = arg.AssetID
   i.ID = uuid
-  i.Type = Type
-  i.InvType = InvType
-  i.WearableType = WearableType
-  i.Name = Name
-  i.Description = Description
+  i.Type = arg.Type
+  i.InvType = arg.InvType
+  i.WearableType = arg.WearableType
+  i.Name = arg.Name
+  i.Description = arg.Description
   if FolderID then
     local par = int_inventory_get_item_from(AgentID, FolderID)
     if not par then
@@ -149,8 +152,43 @@ function invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID,
   else
     i.FolderID = zero_uuid
   end
+
+  -- Default settings: FIXME to get from config ?
+
+  i.CreatorID = AgentID
+  i.OwnerID = AgentID
+  i.GroupID = zero_uuid
+  i.BaseMask = BaseMask
+  i.OwnerMask = BaseMask
+  i.GroupMask = BaseMask
+  i.EveryoneMask = BaseMask
+  i.NextOwnerMask = BaseMask
+  i.GroupOwned = false
+  i.Flags = Flags
+  i.SaleType = 0
+  i.SalePrice = 123
+  i.CreationDate = 100000 -- get the timestamp
+
   int_inventory_put_item_to(AgentID, uuid, i)
-  return uuid
+  return i
+end
+
+function invloc_create_inventory_item(AgentID, FolderID, TransactionID, AssetID, Type, InvType, WearableType, Name, Description)
+  local arg = {}
+  arg.TransactionID = TransactionID
+  arg.AssetID = AssetID
+  arg.Type = Type
+  arg.InvType = InvType
+  arg.WearableType = WearableType
+  arg.Name = Name
+  arg.Description = Description 
+  local i = nil
+  i = invloc_create_inventory_item_x(AgentID, FolderID, arg)
+  if i then
+    return i.ID
+  else
+    return zero_uuid
+  end
 end
 
 function invloc_retrieve_inventory_item(AgentID, uuid)

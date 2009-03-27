@@ -1,7 +1,3 @@
-print("Hello from lua!")
-print(_G.print)
-
-
 -- Create a string accumulator. 
 -- better use dstrcat if you interface with native code
 -- because of ~13x speedup
@@ -28,6 +24,22 @@ function StringAccumulator()
   end
 
   return otab
+end
+
+function dezeroize(s)
+  if s then
+    return string.gsub(s, "\000$", "")
+  else
+    return s
+  end
+end
+
+function enzeroize(s)
+  if s then
+    return s .. "\0"
+  else
+    return s
+  end
 end
 
 
