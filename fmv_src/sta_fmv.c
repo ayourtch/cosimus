@@ -345,7 +345,7 @@ void UDP_LLUUIDS(char* uuid_string, u8t* data, int *i, int datasz)
 }
 
 /* Variable values are always passed as a pair (ptr, length). */
-int Variable2_UDP(const char *val, int length, u8t* data, int *i, int datasz)
+int Variable2_UDP(const u8t *val, int length, u8t* data, int *i, int datasz)
 {
     if(*i + length + 2 >= datasz) {
       return -1;
@@ -363,7 +363,7 @@ int Variable2_UDP(const char *val, int length, u8t* data, int *i, int datasz)
 }
 
 /* return the length, and make the value also a C string, just in case */
-int UDP_Variable2(char *val, int maxlen, u8t* data, int *i, int datasz)
+int UDP_Variable2(u8t *val, int maxlen, u8t* data, int *i, int datasz)
 {
     int length = (int) (data[*i + 0] + data[*i + 1] * 256);
     int copylength = length;
@@ -379,7 +379,7 @@ int UDP_Variable2(char *val, int maxlen, u8t* data, int *i, int datasz)
     return length;
 }
 /* Variable values are passed always as (ptr, length) pair */
-int Variable1_UDP(const char *val, int length, u8t* data, int *i, int datasz)
+int Variable1_UDP(const u8t *val, int length, u8t* data, int *i, int datasz)
 {
     if(*i + length + 1 >= datasz) {
       return -1;
@@ -395,7 +395,7 @@ int Variable1_UDP(const char *val, int length, u8t* data, int *i, int datasz)
     return 0;
 }
 /* return length of data only, not advancing in case val is NULL */
-int UDP_Variable1(char *val, int maxlen, u8t* data, int *i, int datasz)
+int UDP_Variable1(u8t *val, int maxlen, u8t* data, int *i, int datasz)
 {
     int length = (int) data[*i];
     int copylength = length;

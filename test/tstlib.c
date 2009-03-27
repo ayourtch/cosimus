@@ -59,7 +59,7 @@ static int fn_dlock(lua_State *L)
 
 static int fn_dstr(lua_State *L)
 {
-  int len;
+  unsigned int len;
   const char *str = luaL_checklstring(L, 1, &len);
   dbuf_t *d = dalloc(len+10000);
   dmemcat(d, (char *)str, len);
@@ -70,14 +70,14 @@ static int fn_dstr(lua_State *L)
 static int fn_dgetstr(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
-  lua_pushlstring(L, d->buf, d->dsize);
+  lua_pushlstring(L, (void *)d->buf, d->dsize);
   return 1;
 }
 
 static int fn_dstrcat(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
-  int len;
+  unsigned int len;
   const char *str = luaL_checklstring(L, 2, &len);
   dmemcat(d, (char *)str, len);
   lua_pushlightuserdata(L, d);

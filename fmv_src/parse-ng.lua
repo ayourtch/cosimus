@@ -471,7 +471,7 @@ function LuaPushFieldStr(field)
   elseif field.type == "LLUUID" then
     out = 'lua_pushx_uuid(L, &' .. field.name .. '); lua_argn++'
   else 
-    out = 'lua_pushlstring(L, ' .. CodeArrayFieldStr(field) .. '); lua_argn++'
+    out = 'lua_pushlstring(L, (void *)' .. CodeArrayFieldStr(field) .. '); lua_argn++'
     -- out = '/* fixme LuaPushFieldStr: ' .. field.name .. '*/'
   end
   return out .. ';'
@@ -599,7 +599,7 @@ function LuaCodeFieldFromUdp(otab, field)
     otab.p('    }\n')
   end
   if IsArrayField(field) and ArrayFieldKind(field) > 0 then
-    otab.p("    " .. ArrayFieldLengthName(field) .. " = UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n, d->dsize);\n")
+    otab.p("    " .. ArrayFieldLengthName(field) .. " = UDP_" .. FieldTypeName(field) .. "((void*)" .. CodeFieldStr(field, true) .. ", d->buf, &n, d->dsize);\n")
   else
     otab.p("    UDP_" .. FieldTypeName(field) .. "(" .. CodeFieldStr(field, true) .. ", d->buf, &n, d->dsize);\n")
   end

@@ -174,7 +174,7 @@ lua_fn_F32_UDP(lua_State *L) {
   int offs = 0;
   u8t bytes[5];
   F32_UDP(f, bytes, &offs, 5);
-  lua_pushlstring(L, bytes, 4);
+  lua_pushlstring(L, (void *)bytes, 4);
   return 1;
 }
 

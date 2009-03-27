@@ -106,10 +106,10 @@ static int lua_fn_dcheck(lua_State *L)
 }
 static int lua_fn_dstr(lua_State *L)
 {
-  int len;
-  const char *str = luaL_checklstring(L, 1, &len);
+  unsigned int len;
+  char *str = (void *)luaL_checklstring(L, 1, &len);
   dbuf_t *d = dalloc(len+10000);
-  dmemcat(d, (char *)str, len);
+  dmemcat(d, str, len);
   lua_pushlightuserdata(L, d);
   return 1;
 }
@@ -117,16 +117,16 @@ static int lua_fn_dstr(lua_State *L)
 static int lua_fn_dgetstr(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
-  lua_pushlstring(L, d->buf, d->dsize);
+  lua_pushlstring(L, (void *)d->buf, d->dsize);
   return 1;
 }
 
 static int lua_fn_dstrcat(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
-  int len;
-  const char *str = luaL_checklstring(L, 2, &len);
-  dmemcat(d, (char *)str, len);
+  unsigned int len;
+  char *str = (void *)luaL_checklstring(L, 2, &len);
+  dmemcat(d, str, len);
   lua_pushlightuserdata(L, d);
   return 1;
 }
@@ -334,7 +334,7 @@ lua_fn_get_http_data(lua_State *L)
         lua_pushnumber(L, appdata->post_content_got_length);
       } else if(strcmp(key, "post_data") == 0) {
         if (appdata->post_content_buf) {
-          lua_pushlstring(L, appdata->post_content_buf->buf, appdata->post_content_buf->dsize);
+          lua_pushlstring(L, (void *)appdata->post_content_buf->buf, appdata->post_content_buf->dsize);
         } else {
           lua_pushnil(L);
         }
