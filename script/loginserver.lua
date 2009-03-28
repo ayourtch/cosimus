@@ -67,7 +67,7 @@ function loginserver_format_skeleton_reply(folders)
     f.version = folder.Version
     out[1+#out] = f
   end
-  pretty("OUT", out)
+  -- pretty("OUT", out)
   return out
 end
 

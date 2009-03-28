@@ -1,6 +1,6 @@
 function parse_xmlrpc_param(param)
   local p = {}
-  -- print(pretty("param", param))
+  -- pretty("param", param)
   if param.label == "value" then
     local pval = param[1]
     if pval.label == "struct" then

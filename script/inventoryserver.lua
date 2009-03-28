@@ -141,6 +141,7 @@ end
 inventoryserver.coldstart = function()
   local ic = config.inventory_server
   print("Starting HTTP Inventory server on", ic.ServerAddress, ic.ServerPort)
+  invloc_zap_library()
   inventory_zip_scan("opensim_inventory.zip")
   su.http_start_listener(ic.ServerAddress, ic.ServerPort, "inventory_server_http")
 end

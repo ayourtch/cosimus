@@ -368,7 +368,8 @@ end
 function smv_cb_asset_client_asset(a, asset_base)
   local sess = smv_get_session(a.SessionID)
   local p = fmv.packet_new()
-  local MAX_SZ = 600 -- MAX_PACKET_SZ - 100
+  -- local MAX_SZ = 600 -- MAX_PACKET_SZ - 100
+  local MAX_SZ = 1000 -- MAX_PACKET_SZ - 100
   local asset_sz = 0
   print("Transfer req reply for asset id", a.AssetID, asset_base)
   fmv.TransferInfoHeader(p)
@@ -653,7 +654,7 @@ function smv_create_inventory_item(sess, d)
   arg.Description = dezeroize(arg.Description)
 
   arg.AssetID = zero_uuid
-  if not (arg.TransactionID == zero_uuid) then
+  if not (arg.TransactionID == zero_uuid) and  smv_state.transactions[arg.TransactionID] then
     arg.AssetID = smv_state.transactions[arg.TransactionID].AssetID
   end
 

@@ -30,4 +30,8 @@ config.asset_client = {
 require 'cosimus'
 
 -- su.set_debug_level(1000, 100)
+local zInventoryRootLibFolderID = "00000112-000f-0000-0000-000100bba000"
+x = loginserver_format_skeleton_reply(
+         invloc_retrieve_skeleton("library", zInventoryRootLibFolderID ))
+print(x)
 

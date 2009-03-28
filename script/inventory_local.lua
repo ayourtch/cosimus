@@ -2,6 +2,10 @@ if not smv_state.local_inventory then
   smv_state.local_inventory = {}
 end
 
+function invloc_zap_library()
+  smv_state["local_inventory"]["library"] = nil
+end
+
 function int_inventory_check_exists(AgentID)
   local inventory = smv_state["local_inventory"][AgentID]
   -- print("InventoryCheck:", inventory, AgentID)
@@ -103,7 +107,7 @@ function invloc_retrieve_child_elements(AgentID, RootID, GetFolders)
     FieldName = "ChildItems"
   end
   if root then
-    -- table.insert(folders, root) 
+    table.insert(folders, root) 
     for i, uuid in ipairs(root[FieldName]) do
       local f = int_inventory_get_item_from(AgentID, uuid)
       table.insert(folders, f)
