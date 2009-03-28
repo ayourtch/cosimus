@@ -1,1 +1,1 @@
--- This is the empty file to be found in the fallback, in case locally there is no saved lua state yet
+-- save this empty file

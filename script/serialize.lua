@@ -1,7 +1,4 @@
---package.cpath="../../lib/?.so"
---require 'libsupp'
-
-
+require 'startup'
 
 function basicSerialize (o)
   if type(o) == "number" then
@@ -58,24 +55,74 @@ function deserialize(dbuf)
   assert(loadstring(su.dgetstr(dbuf)))()
 end
 
+function LLSD_StrQuote(s)
+  return s
+  -- return string.format("%q", s)
+end
 
-function serialize_llsd(data)
+function LLSD_BasicSerialize (o)
+  if type(o) == "number" then
+    return '<integer>' .. tostring(o) .. '</integer>'
+  elseif type(o) == "boolean" then
+    local x = "false"
+    if o then
+      x = "true"
+    end
+    return '<boolean>' .. x .. '</boolean>'
+  else   -- assume it is a string
+    return '<string>' .. LLSD_StrQuote(o) .. '</string>'
+  end
+end
+
+
+function LLSD_FullSerialize(d, value)
+  if type(value) == "number" or type(value) == "string" or type(value) == "boolean" then
+    su.dstrcat(d, LLSD_BasicSerialize(value))
+  elseif type(value) == "table" then
+    if value[1] then
+      -- hacky hack - a table can have an [1] and the named fields... but we assume it cant
+      su.dstrcat(d, "<array>")
+      for k, v in ipairs(value) do 
+        LLSD_FullSerialize(d, v)
+      end
+      su.dstrcat(d, "</array>")
+    else
+      su.dstrcat(d, "<map>")
+      -- pretty("v", value)
+      for k, v in pairs(value) do
+        su.dstrcat(d, "<key>" .. LLSD_StrQuote(k) .. "</key>")
+        LLSD_FullSerialize(d, v)
+      end
+      su.dstrcat(d, "</map>")
+    end
+  else
+    error("cannot save a " .. type(value))
+  end
+end
+
+
+function llsd_serialize(data)
   local d = su.dalloc(8192)
-   
+  su.dstrcat(d, "<llsd>")
+  LLSD_FullSerialize(d, data)
+  su.dstrcat(d, "</llsd>")
+  return d
 end
 
 local xxxxtest = [[
-t = {}
-t['"'] = true
-t['\''] = false
-t["\0"] = "zero"
+tst = {}
+tst['"'] = true
+tst['\''] = false
+tst["\0"] = "zero"
 
-x = serialize("t", t)
+x = serialize("xt", tst)
 t = {}
+-- print(su.dgetstr(x))
 deserialize(x)
+pretty('tst', tst)
 
-print(su.dgetstr(serialize("t", t)))
+print(su.dgetstr(llsd_serialize(tst)))
 
-
+exit(1)
 ]]
 

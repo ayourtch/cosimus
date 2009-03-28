@@ -103,8 +103,7 @@ function invloc_retrieve_child_elements(AgentID, RootID, GetFolders)
     FieldName = "ChildItems"
   end
   if root then
-    pretty("root", root)
-    table.insert(folders, root) 
+    -- table.insert(folders, root) 
     for i, uuid in ipairs(root[FieldName]) do
       local f = int_inventory_get_item_from(AgentID, uuid)
       table.insert(folders, f)

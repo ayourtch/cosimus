@@ -6,13 +6,14 @@ loginserver = {}
 
 cfg = {}
 cfg.IP = "192.168.1.2"
+cfg.IP = "127.0.0.1"
 cfg.Name = "DalienLand"
 cfg.Port = "9000"
 cfg.X = 1000
 cfg.Y = 1000
 cfg.AssetServerURL = "http://" .. cfg.IP .. ":8003/"
 cfg.UserServerURL = "http://" .. cfg.IP .. ":8003/"
-cfg.SeedCap = "http://" .. cfg.IP .. ":8003/CAPS/seed/"
+cfg.SeedCap = "http://" .. cfg.IP .. ":7777/CAPS/seed/"
 
 if not smv_state.users then
   smv_state.users = {}
@@ -70,10 +71,12 @@ function loginserver_format_skeleton_reply(folders)
   return out
 end
 
-function handle_xmlrpc_login(req, appdata, dh, dd)
+
+function create_login_response(param, appdata, dh, dd)
+
   local xxSimParams = {}
   local userids = {}
-  local param = req.params[1]
+
 
   local zSessionId = fmv.uuid_create()
   local zSecureSessionId = fmv.uuid_create()
@@ -128,20 +131,6 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
    responseData["inventory-skel-lib"] = 
       loginserver_format_skeleton_reply(
          invloc_retrieve_skeleton("library", zInventoryRootLibFolderID ))
-	 --[[
-	 {
-          { folder_id = "a846e02a-f41b-4199-860e-cde46cc25654",
-            parent_id = "00000000-0000-0000-0000-000000000000",
-            name = "Lib Inventory",
-            type_default = 8,
-            version = 1 },
-	  { folder_id = "9846e02a-f41b-4199-7777-000000000103",
-            parent_id = "a846e02a-f41b-4199-860e-cde46cc25654",
-            name = "Male Shape &amp; Outfit",
-            type_default = 5,
-            version = 1 }
-   } 
-   --]]
 
    responseData["inventory-root"] = { { folder_id = zInventoryRootFolderID } }
    responseData["inventory-lib-root"] = { { folder_id = zInventoryRootLibFolderID } }
@@ -167,10 +156,14 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
    responseData["session_id"] = zSessionId
    responseData["secure_session_id"] = zSecureSessionId
    responseData["login"] = "true"
+   return responseData
+end
 
-   su.dstrcat(dh, "Content-type: text/xml; charset=utf-8\r\n")
-
-   dprint_xml_response(responseData, dd)
+function handle_xmlrpc_login(req, appdata, dh, dd)
+  local param = req.params[1]
+  local responseData = create_login_response(param, appdata, dh, dd)
+  su.dstrcat(dh, "Content-type: text/xml; charset=utf-8\r\n")
+  dprint_xml_response(responseData, dd)
 end
 
 print("Login server!")
@@ -210,10 +203,25 @@ function http(uri, appdata, dh, dd)
     print "LLSD login!"
     local req = parse_llsd(pdata)
     pretty("llsd-parsed", req)
+    local param = req[1] 
+    local responseData = create_login_response(param, appdata, dh, dd)
+    su.dstrcat(dh, "Content-type: application/xml+llsd\r\n")
+    su.dstrcat(dd, su.dgetstr(llsd_serialize(responseData)))
   elseif uri == "/login" and pdata then -- and string.match(pdata, "<?xml ") == 1 then
     print "Login!"
     local req = parse_xmlrpc_req(pdata)
     handle_xmlrpc_login(req, appdata, dh, dd)
+  elseif string.match(uri, "^/CAPS/") then
+    local caps = {}
+    print("CAPS request")
+    su.dstrcat(dh, "Content-type: application/xml+llsd\r\n")
+    caps.MapLayer = "http://127.0.0.1:1/CAPS/x"
+    caps.NewFileAgentInventory = "http://127.0.0.1:1/CAPS/x"
+    caps.UpdateNotecardAgentInventory = "http://127.0.0.1:1/CAPS/x"
+    caps.UpdateScriptAgentInventory = "http://127.0.0.1:1/CAPS/x"
+    caps.UpdateScriptTaskInventory = "http://127.0.0.1:1/CAPS/x"
+    caps.RequestTextureDownload = "http://127.0.0.1:1/CAPS/x"
+    su.dstrcat(dd, su.dgetstr(llsd_serialize(caps)))
   else 
     su.dstrcat(dh, "Refresh: 0; /\n")
   end
