@@ -62,7 +62,7 @@ function loginserver_format_skeleton_reply(folders)
     local f = {}
     f.folder_id = folder.ID
     f.parent_id = folder.FolderID
-    f.name = folder.Name
+    f.name = string.gsub(folder.Name, "&", "&amp;")
     f.type_default = folder.Type
     f.version = folder.Version
     out[1+#out] = f
@@ -138,8 +138,13 @@ function create_login_response(param, appdata, dh, dd)
    responseData["gestures"] = { }
    responseData["gestures"][0] = "array"
 
+   responseData["login-flags"] = { {
+      gendered = "Y",
+      ever_logged_in = "N" 
+      } }
+
    responseData["initial-outfit"] = {
-        { folder_name = "Clothing", gender = male }
+        { folder_name = "BodyParts Library", gender = male }
         }
    responseData["seconds_since_epoch"] = os.time()
    responseData["start_location"] = "last";

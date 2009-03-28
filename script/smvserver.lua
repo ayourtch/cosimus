@@ -688,6 +688,10 @@ function smv_update_inventory_item(sess, d)
     i.Description = dezeroize(i.Description)
 
     print("Update item ", i.ItemID)
+    if i.FolderID == zero_uuid then
+      print("Zero parent = not updating")
+      return
+    end
 
     if not (TransactionID == zero_uuid) then
       i.AssetID = smv_state.transactions[TransactionID].AssetID
@@ -729,6 +733,7 @@ function smv_cb_inventory_descendents(a, desc)
   local p = fmv.packet_new()
   local total_folder_descendents = 0
   local total_item_descendents = 0
+  local total_descendents = #desc.Folders + #desc.Items
 
   fmv.InventoryDescendentsHeader(p)
   print("DescendentsX", desc)
@@ -789,7 +794,8 @@ function smv_cb_inventory_descendents(a, desc)
   fmv.InventoryDescendents_ItemDataBlockSize(p, total_item_descendents)
   fmv.InventoryDescendents_AgentData(p, AgentID, a.arg.FolderID, a.arg.OwnerID, 
       1, -- Version
-      total_folder_descendents + total_item_descendents) -- Descendents
+      -- total_folder_descendents + total_item_descendents) -- Descendents
+      total_descendents) -- Descendents
   
   print("Total Item Descendents:", total_item_descendents)
   smv_send_then_unlock(sess, p)
@@ -891,12 +897,12 @@ function smv_packet(idx, d)
       if gid == "PacketAck" then
         -- do nothing
       elseif gid == "CompleteAgentMovement" then
+	smv_x_send_avatar_data(sess)
         smv_send_agent_movement_complete(sess)
 	smv_send_parcel_overlay(sess)
 	smv.SendLayerData(sess)
         -- smv_agent_wearables_request(sess)
 	-- smv_parcel_properties_request(sess, d)
-	-- smv_x_send_avatar_data(sess)
 
       elseif gid == "StartPingCheck" then
         smv_ping_check_reply(sess, d)

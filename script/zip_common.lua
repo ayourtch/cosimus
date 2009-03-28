@@ -94,7 +94,7 @@ function parse_inventory_xml(zf, zfilename, relpath, folderlist, assetlist)
 	      invloc_create_folder("library", item.folderID, item.parentFolderID, item.type, item.name)
 	    else
 	      -- print("Creating Item ", item.name)
-	      -- pretty("item", item)
+	      pretty("item", item)
 	      invloc_create_inventory_item("library", item.folderID, 0, item.assetID, item.assetType, item.inventoryType, item.wearableType, item.name, item.description, item.inventoryID)
 	    end
 	    -- Inventory item/folder/library
