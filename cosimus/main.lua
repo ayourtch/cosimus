@@ -29,13 +29,18 @@ config = {
   inventory_server = {
     ServerAddress = "0.0.0.0";
     ServerPort = 8004;
+    DefaultArchives = {
+      "opensim_inventory.zip",
+      "cosimus_assets_inventory.zip"
+    }
   },
 
   asset_server = {
     ServerAddress = "0.0.0.0";
     ServerPort = 8003;
     DefaultArchives = {
-      "opensim_assets.zip"
+      "opensim_assets.zip",
+      "cosimus_assets_inventory.zip"
     }
   },
 }

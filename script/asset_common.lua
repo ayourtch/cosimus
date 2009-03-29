@@ -37,7 +37,7 @@ function parse_asset(s)
   local x
   local out = {}
   local val = {}
-  pretty("xml_parse_asset", xml)
+  -- pretty("xml_parse_asset", xml)
   if 0 == #xml then
     return nil
   end
@@ -48,7 +48,7 @@ function parse_asset(s)
   end
   out.ObjectType = x.label
   out.Value = val
-  pretty("x", x)
+  -- pretty("x", x)
   for i, el in ipairs(x) do
     local el_val = el[1]
     local lbl = el.label

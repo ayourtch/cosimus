@@ -169,7 +169,7 @@ function create_login_response(param, appdata, dh, dd)
       } }
 
    responseData["initial-outfit"] = {
-        { folder_name = "Default Outfit", gender = female }
+        { folder_name = "Cosimus Default Outfit", gender = female }
         }
    responseData["seconds_since_epoch"] = os.time()
    responseData["start_location"] = "last";

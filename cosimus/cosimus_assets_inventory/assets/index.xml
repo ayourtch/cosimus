@@ -1,0 +1,44 @@
+<Nini>
+  <Section Name="Eyes">
+    <Key Name="assetID" Value="a1dfb1d4-1c01-11de-9ff8-3fb77992d628" />
+    <Key Name="name" Value="Default eyes" />
+    <Key Name="description" Value="Default eyes" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="fileName" Value="eyes.dat" />
+  </Section>
+  <Section Name="Shape">
+    <Key Name="assetID" Value="f701787c-1c02-11de-9ff8-3fb77992d628" />
+    <Key Name="name" Value="Default shape" />
+    <Key Name="description" Value="Default shape" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="fileName" Value="shape.dat" />
+  </Section>
+  <Section Name="Skin">
+    <Key Name="assetID" Value="1624c844-1c03-11de-9ff8-3fb77992d628" />
+    <Key Name="name" Value="Default skin" />
+    <Key Name="description" Value="Default skin" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="fileName" Value="skin.dat" />
+  </Section>
+  <Section Name="Hair">
+    <Key Name="assetID" Value="288d6da6-1c03-11de-9ff8-3fb77992d628" />
+    <Key Name="name" Value="Default hair" />
+    <Key Name="description" Value="Default hair" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="fileName" Value="hair.dat" />
+  </Section>
+  <Section Name="Shirt">
+    <Key Name="assetID" Value="3a00c57e-1c03-11de-9ff8-3fb77992d628" />
+    <Key Name="name" Value="Default shirt" />
+    <Key Name="description" Value="Default shirt" />
+    <Key Name="assetType" Value="5" />
+    <Key Name="fileName" Value="shirt.dat" />
+  </Section>
+  <Section Name="Pants">
+    <Key Name="assetID" Value="4f42fa7e-1c03-11de-9ff8-3fb77992d628" />
+    <Key Name="name" Value="Default pants" />
+    <Key Name="description" Value="Default pants" />
+    <Key Name="assetType" Value="pants" />
+    <Key Name="fileName" Value="pants.dat" />
+  </Section>
+</Nini>

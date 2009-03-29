@@ -52,7 +52,14 @@ function parse_assets_xml(zf, zfilename, relpath, folderlist, assetlist)
 	    -- Inventory item/folder/library
 	  else
             item.ZipFileName = zfilename
-            item.ItemFileName = dirname(folderlist[relpath].FolderPath) .. item.fileName
+	    local folderpath = ""
+	    if folderlist[relpath] and 
+	                           folderlist[relpath].FolderPath then
+	      folderpath = dirname(folderlist[relpath].FolderPath)
+	    else
+	      folderpath = dirname(relpath)
+	    end
+            item.ItemFileName = folderpath .. item.fileName
             -- .. item.fileName
             table.insert(items, item)
             if assetlist then
@@ -154,6 +161,8 @@ end
 
 function get_zip_content(zfname, relpath)
   local zf = zip.open(zfname)
+  print('Getting content from inside ZIP "' .. zfname .. '", file "'
+         .. relpath ..'"')
   local f = zf:open(relpath)
   local data = f:read("*a")
   f:close()

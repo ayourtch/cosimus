@@ -1,0 +1,87 @@
+<Nini>
+  <Section Name="Cosimus Hair">
+    <Key Name="inventoryID" Value="dabdc9be-1c65-11de-817d-217ce883ee09" />
+    <Key Name="assetID" Value="288d6da6-1c03-11de-9ff8-3fb77992d628" />
+    <Key Name="folderID" Value="dabdb1ea-1c65-11de-817d-217ce883ee09"/>
+    <Key Name="description" Value="Cosimus Hair" />
+    <Key Name="name" Value="Cosimus Hair" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="inventoryType" Value="18" />
+    <Key Name="currentPermissions" Value="2147483647" />
+    <Key Name="nextPermissions" Value="2147483647" />
+    <Key Name="everyonePermissions" Value="2147483647" />
+    <Key Name="basePermissions" Value="2147483647" />
+  </Section>
+  
+  <Section Name="Cosimus Skin">
+    <Key Name="inventoryID" Value="dabdcac2-1c65-11de-817d-217ce883ee09" />
+    <Key Name="assetID" Value="1624c844-1c03-11de-9ff8-3fb77992d628" />
+    <Key Name="folderID" Value="dabdb1ea-1c65-11de-817d-217ce883ee09"/>
+    <Key Name="description" Value="Cosimus Skin" />
+    <Key Name="name" Value="Cosimus Skin" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="inventoryType" Value="18" />
+    <Key Name="currentPermissions" Value="2147483647" />
+    <Key Name="nextPermissions" Value="2147483647" />
+    <Key Name="everyonePermissions" Value="2147483647" />
+    <Key Name="basePermissions" Value="2147483647" />
+  </Section>
+
+  <Section Name="Cosimus Shape">
+    <Key Name="inventoryID" Value="dabdcb76-1c65-11de-817d-217ce883ee09" />
+    <Key Name="assetID" Value="f701787c-1c02-11de-9ff8-3fb77992d628" />
+    <Key Name="folderID" Value="dabdb1ea-1c65-11de-817d-217ce883ee09"/>
+    <Key Name="description" Value="Cosimus Shape" />
+    <Key Name="name" Value="Cosimus Shape" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="inventoryType" Value="18" />
+    <Key Name="currentPermissions" Value="2147483647" />
+    <Key Name="nextPermissions" Value="2147483647" />
+    <Key Name="everyonePermissions" Value="2147483647" />
+    <Key Name="basePermissions" Value="2147483647" />
+  </Section>
+
+  <Section Name="Cosimus Eyes">
+    <Key Name="inventoryID" Value="dabdcc2a-1c65-11de-817d-217ce883ee09" />
+    <Key Name="assetID" Value="a1dfb1d4-1c01-11de-9ff8-3fb77992d628" />
+    <Key Name="folderID" Value="dabdb1ea-1c65-11de-817d-217ce883ee09"/>
+    <Key Name="description" Value="Cosimus Eyes" />
+    <Key Name="name" Value="Cosimus Eyes" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="inventoryType" Value="18" />
+    <Key Name="currentPermissions" Value="2147483647" />
+    <Key Name="nextPermissions" Value="2147483647" />
+    <Key Name="everyonePermissions" Value="2147483647" />
+    <Key Name="basePermissions" Value="2147483647" />
+  </Section>
+
+  <Section Name="Cosimus Shirt">
+    <Key Name="inventoryID" Value="dabdccd4-1c65-11de-817d-217ce883ee09" />
+    <Key Name="assetID" Value="3a00c57e-1c03-11de-9ff8-3fb77992d628" />
+    <Key Name="folderID" Value="dabdb1ea-1c65-11de-817d-217ce883ee09"/>
+    <Key Name="description" Value="Cosimus Shirt" />
+    <Key Name="name" Value="Cosimus Shirt" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="inventoryType" Value="18" />
+    <Key Name="currentPermissions" Value="2147483647" />
+    <Key Name="nextPermissions" Value="2147483647" />
+    <Key Name="everyonePermissions" Value="2147483647" />
+    <Key Name="basePermissions" Value="2147483647" />
+  </Section>
+
+  <Section Name="Cosimus Pants">
+    <Key Name="inventoryID" Value="dabdcd7e-1c65-11de-817d-217ce883ee09" />
+    <Key Name="assetID" Value="4f42fa7e-1c03-11de-9ff8-3fb77992d628" />
+    <Key Name="folderID" Value="dabdb1ea-1c65-11de-817d-217ce883ee09"/>
+    <Key Name="description" Value="Cosimus Pants" />
+    <Key Name="name" Value="Cosimus Pants" />
+    <Key Name="assetType" Value="13" />
+    <Key Name="inventoryType" Value="18" />
+    <Key Name="currentPermissions" Value="2147483647" />
+    <Key Name="nextPermissions" Value="2147483647" />
+    <Key Name="everyonePermissions" Value="2147483647" />
+    <Key Name="basePermissions" Value="2147483647" />
+  </Section>
+
+
+</Nini>

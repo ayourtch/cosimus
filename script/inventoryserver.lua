@@ -83,16 +83,17 @@ function inventory_server_http(uri, appdata, dh, dd)
       end
     else
       -- body. note the 1-based indexing in lua... grrr.
-      -- inv[1] = ii("5c86b033-b9cc-11dc-95ff-0800200c9a66", "66c41e39-38f9-f75a-024e-585989bfab73")
-      inv[1] = ii(uuid, "5c86b033-b9cc-11dc-95ff-0800200c9a66")
+      inv[1] = ii(uuid, "dabdcb76-1c65-11de-817d-217ce883ee09")
       -- skin
-      inv[2] = ii(uuid, "5c86b030-b9cc-11dc-95ff-0800200c9a66")
+      inv[2] = ii(uuid, "dabdcac2-1c65-11de-817d-217ce883ee09")
       -- hair
-      inv[3] = ii(uuid, "d342e6c1-b9d2-11dc-95ff-0800200c9a66")
+      inv[3] = ii(uuid, "dabdc9be-1c65-11de-817d-217ce883ee09")
+      -- eyes
+      inv[4] = ii(uuid, "dabdcc2a-1c65-11de-817d-217ce883ee09")
       -- shirt
-      inv[5] = ii(uuid, "d5e46210-b9d1-11dc-95ff-0800200c9a66")
+      inv[5] = ii(uuid, "dabdccd4-1c65-11de-817d-217ce883ee09")
       -- Pants
-      inv[6] = ii(uuid, "d5e46211-b9d1-11dc-95ff-0800200c9a66")
+      inv[6] = ii(uuid, "dabdcd7e-1c65-11de-817d-217ce883ee09")
     end
     json_header(dh)
     su.dstrcat(dd, Json.Encode(inv))
@@ -184,7 +185,9 @@ inventoryserver.coldstart = function()
   local ic = config.inventory_server
   print("Starting HTTP Inventory server on", ic.ServerAddress, ic.ServerPort)
   invloc_zap_library()
-  inventory_server_loadzip("opensim_inventory.zip")
+  for i, fname in ipairs(ic.DefaultArchives) do
+    inventory_server_loadzip(fname)
+  end
   su.http_start_listener(ic.ServerAddress, ic.ServerPort, "inventory_server_http")
 end
 

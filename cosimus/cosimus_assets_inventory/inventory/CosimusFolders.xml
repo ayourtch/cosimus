@@ -1,0 +1,9 @@
+<Nini>
+  <Section Name="Cosimus Default Outfit">
+    <Key Name="folderID" Value="dabdb1ea-1c65-11de-817d-217ce883ee09"/>
+    <Key Name="parentFolderID" Value="00000112-000f-0000-0000-000100bba000"/>
+    <Key Name="name" Value="Cosimus Default Outfit"/>
+    <Key Name="type" Value="13"/>
+  </Section>
+</Nini>
+

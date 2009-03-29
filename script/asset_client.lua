@@ -34,7 +34,8 @@ function int_asset_client_parse_asset(idx, d)
   local is = inventory_client_sockets
   local http_code, body, http_message = http_client_parse_reply(idx)
   local asset_obj = nil
-  print("WeGotAssets!!!", http_code, http_message, "'" .. body .. "'")
+  print("WeGotAssets!!!", http_code, http_message)
+  -- print("'" .. body .. "'")
   local asset_base = nil
   if body then
     asset_obj = parse_asset(body)
