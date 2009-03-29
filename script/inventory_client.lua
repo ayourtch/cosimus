@@ -24,7 +24,10 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 --]]
 
 -- remote inventory client side
+require 'startup'
 require 'httpc_common'
+require 'async'
+require 'json'
 
 
 inventory_client_sockets = {}
