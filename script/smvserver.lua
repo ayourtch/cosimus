@@ -877,6 +877,32 @@ end
 function smv_agent_set_appearance(sess, d)
 end
 
+function smv_agent_animation(sess, d)
+  local p = fmv.packet_new()
+  local AgentID, SessionID = fmv.Get_AgentAnimation_AgentData(d)
+  local sza = fmv.Get_AgentAnimation_AnimationListBlockSize(d)
+  local sze = fmv.Get_AgentAnimation_PhysicalAvatarEventListBlockSize(d)
+
+  fmv.AvatarAnimationHeader(p)
+  fmv.AvatarAnimation_Sender(p, AgentID)
+
+  for i=0,sza-1 do
+    local AnimID, StartAnim = fmv.Get_AgentAnimation_AnimationListBlock(d, i)
+    print("Animation ID:", AnimID, StartAnim)
+    fmv.AvatarAnimation_AnimationListBlock(p, i, AnimID, 1)
+  end
+  fmv.AvatarAnimation_AnimationListBlockSize(p, sza)
+
+  fmv.AvatarAnimation_AnimationSourceListBlockSize(p, 0)
+
+  for i=0,sze-1 do
+    local TypeData = fmv.Get_AgentAnimation_PhysicalAvatarEventListBlock(d, i)
+    fmv.AvatarAnimation_PhysicalAvatarEventListBlock(p, i, TypeData)
+  end
+  fmv.AvatarAnimation_PhysicalAvatarEventListBlockSize(p, sze)
+  smv_send_then_unlock(sess, p)
+end
+
 function smv_packet(idx, d)
   local gid = fmv.global_id_str(d)
   local remote_addr, remote_port = su.cdata_get_remote4(idx)
@@ -941,6 +967,8 @@ function smv_packet(idx, d)
         smv_agent_width_height(sess, d)
       elseif gid == "AgentWearablesRequest" then
         smv_agent_wearables_request(sess)
+      elseif gid == "AgentAnimation" then
+        smv_agent_animation(sess, d)
       elseif gid == 'SomeFooBarZZZZZ' then
 	smv_x_send_avatar_data(sess)
       elseif gid == "AssetUploadRequest" then
