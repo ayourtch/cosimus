@@ -29,17 +29,6 @@ require "inventory_local"
 
 loginserver = {}
 
-cfg = {}
-cfg.IP = "192.168.1.2"
-cfg.IP = "127.0.0.1"
-cfg.Name = "DalienLand"
-cfg.Port = "9000"
-cfg.X = 1000
-cfg.Y = 1000
-cfg.AssetServerURL = "http://" .. cfg.IP .. ":8003/"
-cfg.UserServerURL = "http://" .. cfg.IP .. ":8003/"
-cfg.SeedCap = "http://" .. cfg.IP .. ":7777/CAPS/seed/"
-
 if not smv_state.users then
   smv_state.users = {}
 end
@@ -116,6 +105,7 @@ function create_login_response(param, appdata, dh, dd)
   local zSecureSessionId = fmv.uuid_create()
 
   local zCircuitCode = math.random(2^24)
+  local cfg = config.login_server.DefaultSim
   local zRegionX = cfg.X
   local zRegionY = cfg.Y
   
@@ -196,9 +186,7 @@ function handle_xmlrpc_login(req, appdata, dh, dd)
   dprint_xml_response(responseData, dd)
 end
 
-print("Login server!")
-
-function http(uri, appdata, dh, dd)
+function login_server_http(uri, appdata, dh, dd)
   local qstring = su.get_http_data(appdata, "querystring")
   local pdata = su.get_http_data(appdata, "post_data")
   local ctype = su.get_http_data(appdata, "content-type")
@@ -243,7 +231,8 @@ function http(uri, appdata, dh, dd)
 end
 
 loginserver.coldstart = function()
-  su.http_start_listener("0.0.0.0", 7777, "http")
+  local ci = config.login_server
+  su.http_start_listener(ci.ServerAddress, ci.ServerPort, "login_server_http")
   print("Lua HTTP Login server startup complete!\n")
 end
 

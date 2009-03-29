@@ -25,7 +25,28 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 package.cpath = ""
 package.path = "?.lua;../script/?.lua"
 
+default_ip = "127.0.0.1"
+
+default_sim_ip_for_login_server = default_ip
+default_login_server_ip = default_ip
+default_login_server_port = 7777
+
+
 config = {
+  login_server = {
+    ServerAddress = "0.0.0.0";
+    ServerPort = 7777;
+    DefaultSim = {
+      IP = default_sim_ip_for_login_server;
+      Port = "9000";
+      X = 1000;
+      Y = 1000;
+      SimName = "DalienLand";
+      AssetServerURL = "http://" .. default_sim_ip_for_login_server .. ":8003/";
+      SeedCap = "http://" .. default_login_server_ip .. ":" .. tostring(default_login_server_port) .. "/CAPS/seed/"
+    }
+  },
+
   inventory_server = {
     ServerAddress = "0.0.0.0";
     ServerPort = 8004;
