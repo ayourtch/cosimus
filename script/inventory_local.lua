@@ -240,9 +240,9 @@ function invloc_retrieve_inventory_item(AgentID, uuid)
   local item = int_inventory_get_item_from(AgentID, uuid)
   if not item then
     item = int_inventory_get_item_from("library", uuid)
-    print("Failed search for ", uuid)
+    -- print("Failed search for ", uuid)
   end
-  pretty("item_lib", item)
+  -- pretty("item_lib", item)
   return item
 end
 
