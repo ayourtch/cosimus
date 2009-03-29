@@ -1,0 +1,152 @@
+This text file aims to get the folks who happen to read it,
+to get a bit up to speed on this pile of code.
+
+
+Overview of the code.
+
+I try to keep the code layered, and the below attempt at 
+ASCII art shows the approximation at how different pieces 
+tie together. 
+
+
+
+ http services
+
+(assets) (inv) (login)                          SMetaVerse packet handlers
+      \       \   | 
+       ------ [lua-handler]                      (packet handlers)----          (callbacks)
+                       \                           |                  \        / 
+                 [lua-dispatcher]                (smv pktserver)    (client code)     
+                           \                     /                      |  ^
+                           [lib_httpd]         [smv pktserver]          v  |
+    *lua                              \         /                -----[outbound tcp handlers] 
+    |                                  \       /----------------/                                      
+[lib_dbuf] [timers]                   [sockets] 
+
+
+Printing the debugs.
+
+lib_debug provides the facilities to output various debug information - basically
+you get printf with a couple extra parameters - kind of debug and "verbosity level". 
+"kind" is a globally unique across the app number, "verbosity level" is how much
+unimportant the message is. level 0 means catastrophy - it will get printed by default.
+level 100+ means "noone probably will ever look at this, it's too verbose".
+Then there are various routines to manipulate the debug levels. Pretty much
+all of the low-level infra and the networking code use this facility. The lua code
+will eventually use, too.
+
+Low-level infrastructure.
+
+First a couple of words about "dbufs" - you'll see them a lot in the code.
+It's a very simple structure which allows for a much more pleasant memory 
+management than malloc()/free() alone, at least in my opinion.
+
+The (dbuf_t *), which is returned as a result of dalloc(<max size>), is not 
+the pointer to the buffer, but instead is the pointer to the metadata 
+structure. Why this is cool ? Because we get now for free 
+the reference-counting memory management. You will notice that there 
+is no "dfree" that would correspond to "dalloc" - there is only "dunlock".
+
+So here's the deal - "d = dalloc(1024)" allocates 1K of memory and sets 
+the reference count to 1. When you from your perspective are done 
+with that memory, you call "dunlock(d)", which decrements the reference
+count, and since it reached 0, it calls free(). So far not much fun, right ?
+Now, inbetween, you pass the d to some other function, which may or may not
+need it for later use - you as a caller have no clue. But, a little detail 
+will help. Simply, each assignment to a "pointer" variable must be wrapped
+with dlock(d), and each disposal of the pointer variable holding a pointer
+to a dbuf, must be supplemented with dunlock(dvar). Then, automagically,
+the memory will get freed when needed, and it is relatively cheap.
+Of course, noone should forget the classical case of circular references -
+the reason why all the smart people of the world make the mark-and-sweep
+garbage collectors. I think that with a bit of discipline you might 
+be able to avoid the dead circular references. And if you have some 
+things leaking around - there are quite extensive debug support there. 
+Look into the code. This lib is reasonably well tested.
+
+Another possibly useful library is the list library. 
+The difference from it from the sys/queue.h primitives is that it does
+not require the extra fields in the member structures, and instead uses 
+small specialized records to deal with the left-right pointers.
+I think it is not the most perfect code, but it seems to work, so 
+I leave it there for now for the cases where multiple (unknown in advance) 
+list membership will be needed. Probably you won't need it.
+
+There are a few more goodies - like hash tables with iterators, and such,
+but for now they are uninteresting (as most of the cool things is done 
+purely in Lua for now anyway) - if the need arises, I'll add some
+description later.
+
+Networking
+
+As you can see, the base of all is the sockets abstraction library,
+which allows a reasonably convenient event-driven interface to
+sockets. It allows either to establish the listener socket, or to
+initiate outbound TCP connections. The "heart" is the routine 
+sock_one_cycle in lib_sock.c which does one poll() call over the
+active socket set, and calls the appropriate handlers.
+
+The callbacks on the listener TCP sockets pretty much make 
+the left branch of the tree - it is now a server code which aims 
+to serve HTTP. The code, lib_httpd, has the provision for 
+"dispatcher" function, which is switch() in disguise, mostly.
+For now, it is just a no-op, which calls the handler.
+
+When the handler is initialized from Lua side, the string parameter
+is supplied - it is a name of the global function which will serve
+as a handler for this port. This function, for now just gets the 
+entire request, slightly parsed - and also two initially empty dbufs - 
+header and body.
+
+You keep dstrcat'ting to them as you like. If you start the header dbuf
+with "HTTP/1" then it will be sent verbatim, otherwise a standard 
+"HTTP/1.0 200 OK" and the proper Date header will be prepended. 
+For now it is really a pretty dumb server - it closes the connection
+per-request. 
+
+The initiating sockets are created from Lua, and also get the name 
+of the global Lua function that will receive the events. This allows
+to fire up a request, and have it call back a Lua function when it is 
+done and received the data.
+
+The UDP is somewhat of an afterthought, and I am very much missing
+the sendto()-like primitive, which will inevitably get added as the
+itching gets too severe (Like, when I start testing with more 
+than one client, most probably this will become a problem :)
+
+Application-level for SL(tm) clients
+
+For the SecondLife(tm) packets, the listener is installed, which 
+first calls the C handler (giving us the room to push down some 
+things down into C for the future), which later calls the handler
+in Lua.
+
+In order to dissect the packets from the client, the code 
+similar to funmv is being used - I borrowed the "static" part 
+of the code from the funmv project, and rewrote the codegenerator 
+in Lua, also changed the semantics a bit. 
+
+Each function in C also has a corresponding identical 
+function in Lua. Word of caution: as Lua's concept of numbers
+is a bit unusual, on the default architecture this means no doubles
+can be stored in Lua nor 64-bit integers. The first ones are 
+autoconverted into Lua numbers (hence possibly losing the precision),
+and the second ones are represented as Lua strings.
+
+Architectural philosophy
+
+"Components talk via TCP/IP sockets". Even though technically
+the asset server, the inventory server, the login server, 
+and the SMV packet server are sitting within the same process, 
+if they need to talk - they utilize the TCP/IP on loopback. While one 
+would think it is wasteful to do this in case of a single host setup - 
+this is actually a tribute to laziness, because now that you are forced 
+to have all of your codepath asynchronous, the bugs should show up faster 
+and be easier to catch. Also, in the future this will allow to split 
+different components between the different processes and even different 
+hosts without too much work.
+
+Physics and scripting, if we ever get there, will use the same approach. 
+Maybe there would be more components that would be cut off in this fashion.
+
+...to be continued.
