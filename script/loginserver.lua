@@ -208,27 +208,7 @@ function http(uri, appdata, dh, dd)
   end
 
   if uri == "/" then
-    print(hexstr(dgetstr(appdata, 0, 30)))
-    -- dstrcat(dh, "Refresh: 0; /\n")
-    pp('<html><body><h1>Test form</h1><form action="/foo" method="post"><textarea name="xxx"></textarea><input type="submit"></form></body></html>')
-  elseif uri == "/" then 
-
-    pp("<html><body>\n")
-    pp("<h1>header test for uri:", uri, "</h1>")
-    pp("<p>post len: " , su.get_http_data(appdata, "post_data_length") , "</p>")
-    pp("<p>Post data: <pre>", pdata, "</pre></p>")
-    pp(tostring(os.time()))
-    pp("<p><b>query: ", su.get_http_data(appdata, "querystring"), "</b></p>\n")
-    pp("</body></html>")
-    if pdata then
-      print("PostData:", pdata)
-    end
-
-    local file = io.open("tmp/loginserver.txt","a")
-    file:write("---- data ----\n")
-    file:write(pdata)
-    file:write("\n")
-    file:close()
+    su.dstrcat(dh, "HTTP/1.0 404 Not Found\r\n")
   elseif uri == "/login" and pdata and ctype == "application/xml+llsd" then
     print "LLSD login!"
     local req = parse_llsd(pdata)
@@ -267,46 +247,3 @@ loginserver.coldstart = function()
   print("Lua HTTP Login server startup complete!\n")
 end
 
-
-x1 = parse_xmlrpc_req[[
-<?xml version="1.0"?><methodCall><methodName>login_to_simulator</methodName><params><param><value><struct><member><name>first</name><value><string>Dalien</string></value></member><member><name>last</name><value><string>Talbot</string></value></member><member><name>passwd</name><value><string>somehash</string></value></member><member><name>start</name><value><string>home</string></value></member><member><name>version</name><value><string>Second Life Release 1.21.6.99587</string></value></member><member><name>channel</name><value><string>Second Life Release</string></value></member><member><name>platform</name><value><string>Win</string></value></member><member><name>mac</name><value><string>aaaaaaaaaaaaaaaaa</string></value></member><member><name>id0</name><value><string/></value></member><member><name>last_exec_event</name><value><int>0</int></value></member><member><name>options</name><value><array><data><value><string>inventory-root</string></value><value><string>inventory-skeleton</string></value><value><string>inventory-lib-root</string></value><value><string>inventory-lib-owner</string></value><value><string>inventory-skel-lib</string></value><value><string>initial-outfit</string></value><value><string>gestures</string></value><value><string>event_categories</string></value><value><string>event_notifications</string></value><value><string>classified_categories</string></value><value><string>buddy-list</string></value><value><string>ui-config</string></value><value><string>tutorial_setting</string></value><value><string>login-flags</string></value><value><string>global-textures</string></value></data></array></value></member></struct></value></param></params></methodCall>
-]]
-
--- print(pretty("arg", x1.params[1]))
--- handle_xmlrpc_login(x1, nil, nil, nil)
-
-pretty_req = [[
-print(pretty("req", x1))
-
-
-req = {}
-req["method"] = "login_to_simulator"
-req["params"] = {}
-req["params"][1] = {}
-req["params"][1]["mac"] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-req["params"][1]["platform"] = "Win"
-req["params"][1]["options"] = {}
-req["params"][1]["options"][1] = "inventory-root"
-req["params"][1]["options"][2] = "inventory-skeleton"
-req["params"][1]["options"][3] = "inventory-lib-root"
-req["params"][1]["options"][4] = "inventory-lib-owner"
-req["params"][1]["options"][5] = "inventory-skel-lib"
-req["params"][1]["options"][6] = "initial-outfit"
-req["params"][1]["options"][7] = "gestures"
-req["params"][1]["options"][8] = "event_categories"
-req["params"][1]["options"][9] = "event_notifications"
-req["params"][1]["options"][10] = "classified_categories"
-req["params"][1]["options"][11] = "buddy-list"
-req["params"][1]["options"][12] = "ui-config"
-req["params"][1]["options"][13] = "tutorial_setting"
-req["params"][1]["options"][14] = "login-flags"
-req["params"][1]["options"][15] = "global-textures"
-req["params"][1]["first"] = "Dalien"
-req["params"][1]["passwd"] = "$1$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-req["params"][1]["version"] = "Second Life Release 1.21.6.99587"
-req["params"][1]["channel"] = "Second Life Release"
-req["params"][1]["start"] = "home"
-req["params"][1]["last_exec_event"] = 0
-req["params"][1]["id0"] = ""
-req["params"][1]["last"] = "Talbot"
-]]
