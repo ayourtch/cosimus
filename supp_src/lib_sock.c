@@ -903,10 +903,13 @@ sock_connected_pollin(int i, void *u_ptr)
       sock_receive_data(i, d);
       debug(DBG_GLOBAL, 11,
             "..read %d bytes - max %d (idx %d)", d->dsize, d->size, i);
-      if(d->dsize == 0 || (d->dsize > 0 && ev_read(i, d, u_ptr) == 0)) {
+      if(d->dsize == 0) {
         debug(DBG_GLOBAL, 1, "Index %d closed by remote host", i);
         close_idx(i, u_ptr);
-      }
+      } else if (d->dsize > 0 && ev_read(i, d, u_ptr) == 0) {
+        debug(DBG_GLOBAL, 1, "Index %d closed by local host (zero return from ev_read()", i);
+        close_idx(i, u_ptr);
+      } 
       // those who needed this have copied it already 
       debug(DBG_GLOBAL, 11, "sock_connected_pollin: freeing buffer %x", d);
       dunlock(d);
