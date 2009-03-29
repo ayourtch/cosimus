@@ -31,6 +31,7 @@ http_request = {
 
 function http_client_callback(idx, event, d)
   local is = inventory_client_sockets
+  local res = 1
 
   if event == su.SOCK_EVENT_CHANNEL_READY  then
     is[idx].RecvData = su.dalloc(1024)
@@ -42,7 +43,8 @@ function http_client_callback(idx, event, d)
     if is[idx].ReadChunk then
       is[idx].ReadChunk(idx, d)
     else
-      su.dstrcat(is[idx].RecvData, su.dgetstr(d))
+      local s = su.dgetstr(d)
+      su.dstrcat(is[idx].RecvData, s)
     end
   elseif event == su.SOCK_EVENT_CLOSED then
     if is[idx].ReadAll then
@@ -56,6 +58,7 @@ function http_client_callback(idx, event, d)
     end
     is[idx].RecvData = nil
   end
+  return res
 end
 
 function http_client_parse_reply(idx)

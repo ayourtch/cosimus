@@ -101,9 +101,10 @@ function inventory_server_http(uri, appdata, dh, dd)
     -- uuid of the agent 
     local uuid = string.gsub(uri, "^/inventory/", "")
     if pdata then
-      print("Trying to store the inventory:", pdata)
+      print("Handling the inventory request:", pdata)
       local req = Json.Decode(pdata)
       local res = {}
+      print("Command in the request:", req.Command)
       if req.Command == "create" then
         local item = invloc_create_inventory_item_x(req.AgentID, req.FolderID, req.arg)
 	res.Result = "OK"

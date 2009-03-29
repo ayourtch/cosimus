@@ -37,7 +37,7 @@ function test_callback(a)
   print("In callback")  
 end
 
-
+su.set_debug_level(1000, 100)
 folder_uuid = "00000112-000f-0000-0000-000100bba001"
 arg = {}
 arg.FetchFolders = true
