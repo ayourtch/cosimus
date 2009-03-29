@@ -163,11 +163,28 @@ function inventory_server_http(uri, appdata, dh, dd)
   -- return "", ""
 end
 
+function inventory_server_loadzip(fname)
+  items = inventory_zip_scan(fname)
+  for i, item in ipairs(items.folders) do
+    invloc_create_folder("library", item.folderID, item.parentFolderID, 
+               item.type, item.name)
+  end
+  for i, item in ipairs(items.items) do
+     invloc_create_inventory_item("library", item.folderID, 0, item.assetID, 
+               item.assetType, item.inventoryType, item.wearableType, 
+               item.name, item.description, item.inventoryID)
+
+  end
+  print("inventory_server_loadzip: loaded " .. tostring(#items.folders) 
+         .. " folders and " .. tostring(#items.items) 
+         .. " items from " .. fname)
+end
+
 inventoryserver.coldstart = function()
   local ic = config.inventory_server
   print("Starting HTTP Inventory server on", ic.ServerAddress, ic.ServerPort)
   invloc_zap_library()
-  inventory_zip_scan("opensim_inventory.zip")
+  inventory_server_loadzip("opensim_inventory.zip")
   su.http_start_listener(ic.ServerAddress, ic.ServerPort, "inventory_server_http")
 end
 

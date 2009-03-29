@@ -83,12 +83,11 @@ function assets_zip_scan(zfname)
   return assetlist
 end
 
-function parse_inventory_xml(zf, zfilename, relpath, folderlist, assetlist)
+function parse_inventory_xml(zf, zfilename, relpath, items)
   local f = zf:open(relpath)
   local xml = parse_xml(f:read("*a"))
   if xml[1].label == "Nini" then
     local x = xml[1]
-    local items = {}
     for i, xi in ipairs(x) do
       if xi.label == "Section" then
         item = {}
@@ -100,7 +99,7 @@ function parse_inventory_xml(zf, zfilename, relpath, folderlist, assetlist)
         end
         if item.file then
           local other_relpath = dirname(relpath) .. item.file
-          folderlist[other_relpath] = item
+          -- folderlist[other_relpath] = item
           item.ZipFileName = zfilename
           item.FolderPath = other_relpath
         else
@@ -115,21 +114,10 @@ function parse_inventory_xml(zf, zfilename, relpath, folderlist, assetlist)
 	    item.everyonePermissions = tonumber(item.everyonePermissions)
             item.type = tonumber(item.type)
 	    if item.parentFolderID then
-	      -- print("Creating Folder ", item.name,  item.folderID, item.parentFolderID)
-	      invloc_create_folder("library", item.folderID, item.parentFolderID, item.type, item.name)
+              table.insert(items.folders, item)
 	    else
-	      -- print("Creating Item ", item.name)
-	      pretty("item", item)
-	      invloc_create_inventory_item("library", item.folderID, 0, item.assetID, item.assetType, item.inventoryType, item.wearableType, item.name, item.description, item.inventoryID)
+              table.insert(items.items, item)
 	    end
-	    -- Inventory item/folder/library
-            -- item.ZipFileName = zfilename
-            -- item.ItemFileName = dirname(folderlist[relpath].FolderPath) .. item.fileName
-            -- .. item.fileName
-            -- table.insert(items, item)
-            -- if assetlist then
-            --  table.insert(assetlist, item)
-            --end
 	  else
 	  end
         end
@@ -144,22 +132,23 @@ end
 function inventory_zip_scan(zfname)
   local zf = zip.open(zfname)
 
-  local folderlist = {}
-  local assetlist = {}
   local items_filelist = {}
+  local items = {}
+  items.folders = {}
+  items.items = {}
 
   for fn in zf:files() do
     if string.match(fn.filename, 'Items.xml$') then
       table.insert(items_filelist, fn)
     elseif string.match(fn.filename, '.xml$') then
-      print(fn.filename)
-      parse_inventory_xml(zf, zfname, fn.filename, folderlist, assetlist)
+      -- print(fn.filename)
+      parse_inventory_xml(zf, zfname, fn.filename, items)
     end
   end
   for i, fn in ipairs(items_filelist) do
-    parse_inventory_xml(zf, zfname, fn.filename, folderlist, assetlist)
+    parse_inventory_xml(zf, zfname, fn.filename, items)
   end
-  return assetlist
+  return items
 end
 
 
