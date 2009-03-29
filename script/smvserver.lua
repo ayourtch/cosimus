@@ -26,6 +26,9 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 require 'serialize'
 require 'async'
 require 'asset_client'
+require 'mv_smv_scene'
+require 'mv_scene'
+require 'simplemath'
 
 smv_state = {}
 smv_state.assets = {}
@@ -35,6 +38,7 @@ require 'persistent_state'
 smv_state.transactions = {}
 smv_state.sessions = {}
 smv_state.sess_id_by_remote = {}
+smv_state.sess_id_by_agent_id = {}
 
 require 'luastate'
 
@@ -46,6 +50,10 @@ end
 
 function smv_get_session(uuid)
   return smv_state.sessions[uuid]
+end
+
+function smv_get_session_id_agent_id(uuid)
+  return smv_state.sess_id_by_agent_id[uuid]
 end
 
 function smv_next_seq(sess, p)
@@ -184,6 +192,7 @@ function smv_logout_session(sess)
   local session_id = sess.SessionID
   print("Logging out session ", session_id)
   smv_state.sess_id_by_remote[sess.remote_str] = nil
+  smv_state.sess_id_by_agent_id[sess.AgentID] = nil
   smv_state.sessions[session_id] = nil
 end
 
@@ -558,16 +567,6 @@ function smv_create_avatar_data(sess, p, xPos, yPos, zPos)
   )
 end
 
-function smv_x_send_avatar_data(sess)
-  local p = fmv.packet_new()
-  fmv.ObjectUpdateHeader(p)
-  fmv.ObjectUpdate_RegionData(p, smv_get_region_handle(), 32766);
-  fmv.ObjectUpdate_ObjectDataBlockSize(p, 1)
-  -- fmv.ObjectDataBlock(p, )
-  smv_create_avatar_data(sess, p, 15.0, 15.0, 2.0)
-  smv_send_then_unlock(sess, p)
-end
-
 function smv_agent_update_received(sess, d)
   local AgentID, SessionID, 
     xBodyRotation, yBodyRotation, zBodyRotation, wBodyRotation,
@@ -580,6 +579,15 @@ function smv_agent_update_received(sess, d)
     Far,
     ControlFlags,
     Flags = fmv.Get_AgentUpdate_AgentData(d)
+  -- print("Agent update ControlFlags =", ControlFlags, "Flags = ", Flags)
+  -- boolean arithmetic would have been much more deserved here, but this will do for now
+  if (ControlFlags == 524288) or (ControlFlags == 1025) then
+    local dx, dy, dz = 1, 0, 0
+    dx, dy, dz = math_vec_mult_quat(dx,dy,dz, 
+                   xBodyRotation, yBodyRotation, zBodyRotation, wBodyRotation)
+    smv_scene_move_avatar_by(AgentID, dx, dy, dz)
+  end
+  
 
   -- print("Agent update camera is at:", xCameraCenter, yCameraCenter, zCameraCenter)
 
@@ -920,6 +928,7 @@ function smv_packet(idx, d)
       local sess = {}
       smv_state.sessions[session_id] = sess
       smv_state.sess_id_by_remote[remote_str] = session_id
+      smv_state.sess_id_by_agent_id[user_id] = session_id
 
       sess.idx = idx
       sess.circuit_code = circuit_code
@@ -945,7 +954,7 @@ function smv_packet(idx, d)
       if gid == "PacketAck" then
         -- do nothing
       elseif gid == "CompleteAgentMovement" then
-	smv_x_send_avatar_data(sess)
+        smv_scene_add_avatar(sess.SessionID, sess.AgentID, {}, "Fixme", 30, 30, 2)
         smv_send_agent_movement_complete(sess)
 	smv_send_parcel_overlay(sess)
 	smv.SendLayerData(sess)
@@ -956,7 +965,6 @@ function smv_packet(idx, d)
         smv_ping_check_reply(sess, d)
       elseif gid == "CompletePingCheck" then
         smv_ping_check_reply(sess, d)
-	smv_x_send_avatar_data(sess)
         -- smv_agent_wearables_request(sess)
       elseif gid == "AgentDataUpdateRequest" then
         -- smv_agent_data_update(sess, d)
@@ -1031,12 +1039,13 @@ end
 
 smv.serialize = function()
   local s = serialize("smv_state", smv_state)
+  local s1 = serialize("mv_state", mv_state)
   local f = io.open("luastate.lua", "w+")
   f:write(su.dgetstr(s))
+  f:write(su.dgetstr(s1))
   io.close(f)
-  print "Serialized Lua state: "
-  print(s)
-  return s
+  su.dunlock(s)
+  su.dunlock(s1)
 end
 
 function interrupt_save_state()
