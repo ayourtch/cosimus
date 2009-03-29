@@ -52,6 +52,13 @@ end
 
 function scene_update_all_agent_add(av)
   -- send the updates to all the rest of the agents about a new avatar about to be added
+  for ag_uuid, ag in pairs(mv_state.scene.avatars) do
+    local ev_update_add = mv_runtime.avatar_scene_handlers[ag.StackType].ev_update_add
+    ev_update_add(ag, av)
+    -- notify the newly added client about the others
+    local ev_update_add1 = mv_runtime.avatar_scene_handlers[av.StackType].ev_update_add
+    ev_update_add1(av, ag)
+  end
 end
 
 function scene_update_all_agent_remove(av)
@@ -74,6 +81,7 @@ function scene_add_avatar(AgentID, StackType, blob_av, label, x, y, z)
   av.X = x
   av.Y = y
   av.Z = z
+  av.Label = label
   av.Blob = blob_av -- platform-specific data that may not be understood by all the client stacks
   av.StackType = StackType -- client stack type
   print("MV adding avatar to scene")

@@ -25,22 +25,11 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 
 require 'serialize'
 require 'async'
+require 'smv_state_mgmt'
 require 'asset_client'
 require 'mv_smv_scene'
 require 'mv_scene'
 require 'simplemath'
-
-smv_state = {}
-smv_state.assets = {}
-smv_state.inventory = {}
-require 'persistent_state'
-
-smv_state.transactions = {}
-smv_state.sessions = {}
-smv_state.sess_id_by_remote = {}
-smv_state.sess_id_by_agent_id = {}
-
-require 'luastate'
 
 zero_uuid = "00000000-0000-0000-0000-000000000000"
 
@@ -512,61 +501,6 @@ function smv_agent_data_update(sess, d)
       )
   smv_send_then_unlock(sess, p)
 end
-
-function smv_create_avatar_data(sess, p, xPos, yPos, zPos)
-  -- magic objectdata values.
-  local objectdata = string.rep("\0", 15) .. string.char(128) .. 
-                     fmv.F32_UDP(xPos+0.01) .. fmv.F32_UDP(yPos) .. fmv.F32_UDP(zPos) ..
-                     -- string.rep("\0", 39) .. 
-                     string.rep("\0", 28) .. 
-                     string.char(128) .. string.rep("\0", 4) .. string.char(102, 140, 61, 189) ..
-		     string.rep("\0", 11)
-  -- print("Avatar data length:", #objectdata)
-  fmv.ObjectUpdate_ObjectDataBlock(p, 0,
-    569, -- agent local id
-    0, -- State
-    sess.AgentID, -- FullID
-    0, -- CRC
-    47, -- PCode, 
-    4, -- Material
-    0, -- ClickAction
-    1.0, 1.0, 1.0, -- Scale
-    objectdata, -- ObjectData[76]
-    0, -- ParentID 
-    276957501, -- UpdateFlags
-    16, -- PathCurve
-    1, -- ProfileCurve
-    0, -- PathBegin
-    0, -- PathEnd
-    100, 100, -- PathScale X/Y
-    0, 0, -- PathShearX/Y
-    0, 0, -- PathTwist / PathTwistBegin
-    0, -- PathRadiusOffset
-    0, 0, -- PathTaperX/Y
-    0, -- PathRevolutions
-    0, -- PathSkew
-    0, 0, -- Profile Begin/End
-    0, -- ProfileHollow
-    "", -- TextureEntry
-    "", -- TextureAnim
-    "FirstName STRING RW SV Test User\nLastName STRING RW SV | example.com\0", --NameValue
-    "SomeData", -- Data
-    "TestText", -- Text
-    "\0\255\0\0", -- TextColor
-    "\0", -- MediaURL
-    "", -- PSBlock
-    "", -- ExtraParams
-    zero_uuid, -- Sound
-    zero_uuid, -- OwnerID
-    0, -- Gain
-    0, -- Flags
-    0, -- Radius
-    0, -- JointType
-    10.0, 0.0, 0.0, -- JointPivot
-    0.0, 0.0, 0.0 -- JointAxisOrAnchor
-  )
-end
-
 function smv_agent_update_received(sess, d)
   local AgentID, SessionID, 
     xBodyRotation, yBodyRotation, zBodyRotation, wBodyRotation,
@@ -954,7 +888,7 @@ function smv_packet(idx, d)
       if gid == "PacketAck" then
         -- do nothing
       elseif gid == "CompleteAgentMovement" then
-        smv_scene_add_avatar(sess.SessionID, sess.AgentID, {}, "Fixme", 30, 30, 2)
+        smv_scene_add_avatar(sess.SessionID, sess.AgentID, {}, "Fixme | example.com", 30, 30, 2)
         smv_send_agent_movement_complete(sess)
 	smv_send_parcel_overlay(sess)
 	smv.SendLayerData(sess)
