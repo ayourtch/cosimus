@@ -306,6 +306,158 @@ void smv_set_height_map_at(int x, int y, float z)
   }
 }
 
+/* 
+ * Short helper function which should allow to 
+ * avoid boundary checks in the getter below.
+ * The edges of the heightmap are simply assumed to be stretching 
+ * into infinity - for now.
+ * Later if there's ever "direct neighbourships" - 
+ * this could go and poke into the neighbouring heightmap as well.
+ */
+
+static float H(int x, int y)
+{
+  if (x < 0) { x = 0; } if (x > 255) { x = 255; }
+  if (y < 0) { y = 0; } if (y > 255) { y = 255; }
+  return my_height_map[y*256 + x];
+}
+
+
+
+/**
+ * For now, we interpolates the Z coordinate using a simple algorithm:
+ *
+ *  - take the x-y square with the center in the middle, 
+ *    that contains our x-y coordinates. 
+ *  - put a dot in the middle of it.
+ *  - use that dot as a means to split the square into 3 triangles
+ *  - select the triangle that the user's supplied coordinates fall into.
+ *  - return Z coordinate for the user's point on that respective plane.
+ * 
+ *  As we probably would need the normal vector too in the near future,
+ *  split the calculation of the plane coefficient into a separate function.
+ *
+ **/
+
+static void calc_abcmd(float x, float y, float *A, float *B, float *C, float *MD)
+{
+  float x1, x2, x3, y1, y2, y3, z1, z2, z3;
+  int x0, y0;
+
+
+  // will use in indices and as a base. It's truncated x,y.
+  x0 = (int)(x); y0 = (int)(y); 
+
+  // 3rd point is the average of all 4 points of the bounding x-y square.
+
+  x3 = 0.5 + x0; 
+  y3 = 0.5 + x0;
+  z3 = 0.25 * ( H(x0, y0) + H(x0+1, y0) + H(x0, y0+1) + H(x0+1, y0+1) );
+
+  /* 
+   * Now we need to find which triangle we're in. Let's imagine this 
+   * x/y square being a postcard, with the (x0,y0) its 
+   * left-top corner. Then (x3,y3) divides it into four triangles.
+   * Let's number them from 1 to 4:
+   *
+   * (x0,y0)  (x0+1, y0)
+   *  |      /
+   *  v     v
+   *  +-----+---> X
+   *  |\ 1 /| 
+   *  | \ / |
+   *  |4 + 2|
+   *  | / \ |
+   *  |/ 3 \|
+   *  +-----+ <-- (x0+1, y0+1)
+   *  |
+   *  v
+   *  Y
+   * 
+   * To figure out which of the triangles holds the (x,y) we need to find the position
+   * of that dot reative to two diagonals.
+   *
+   * First - if x > y then we're either in 1 or 2, else if 
+   * x < y then we're in either 3 or 4. If we just use that to fix the x1/y1 pair to 
+   * the common point, I think we will get the "flipover" effect. So we'll assign 
+   * the coordinates for x1, x2 always in pairs.
+   * 
+   * Second bisection - if (x0+1-x > y-y0) then it is either in 1 or 4, otherwise 
+   * it is in 2 or 3. 
+   * 
+   * The border where the strict inequality does not hold - can be calculated
+   * using either of the plane equations. So we save some typing.
+   *
+   * Intuitively, the direction of the normal vector, should be dependant on the 
+   * "rotation" of the points - so we can't "optimize" by using one condition to 
+   * assign the common value. We assign the coords for points "clockwise",
+   * taking into the account that (x3, y3) is already assigned.
+   *
+   * (x0,y0)  (x0+1, y0)
+   *  |      /
+   *  v     v
+   *  +-----+---> X
+   *  |\ 1 /| 
+   *  | \ / |
+   *  |4 + 2|
+   *  | / \ |
+   *  |/ 3 \|
+   *  +-----+ <-- (x0+1, y0+1)
+   *  | \
+   *  v  (x0, y0+1)
+   *  Y
+   * 
+   */
+
+  if(x0+1-x > y-y0) { // either #1 or #4
+    if(x > y) { // #1
+      x1 = x0; y1 = y0; z1 = H(x0,y0);
+      x2 = x0+1.0; y2 = y0; z2 = H(x0+1,y0);
+    } else { // #4
+      x1 = x0; y1 = y0+1; z1 = H(x0,y0+1);
+      x2 = x0; y2 = y0; z2 = H(x0,y0);
+    }
+  } else { // either #2 or #3
+    if(x > y) { // #2
+      x1 = x0+1.0; y1 = y0; z1 = H(x0+1,y0);
+      x2 = x0+1.0; y2 = y0+1.0; z2 = H(x0+1,y0+1);
+    } else { // #3
+      x1 = x0+1.0; y1 = y0+1.0; z1 = H(x0+1,y0+1);
+      x2 = x0; y2 = y0+1.0; z2 = H(x0,y0+1);
+    }
+  }
+
+  /*
+   * now we have the three points. Calculate the coefficients
+   * for the equation of the plane in the form:
+   * "Ax + By + Cz = MD" (MD == minus D)
+   */
+
+  *A = y1 * (z2 - z3) + y2 * (z3 - z1) + y3 * (z1 - z2);
+  *B = z1 * (x2 - x3) + z2 * (x3 - x1) + z3 * (x1 - x2);
+  *C = x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2);
+  *MD = x1 * (y2*z3 - y3*z2) + x2 * (y3*z1 - y1*z3) + x3*(y1*z2 - y2*z1);
+}
+
+
+float smv_get_height_map_at(float x, float y)
+{
+  float z, A,B,C,MD;
+  
+  // clamp the x and y
+  if (x < 0.0) { x = 0.0; } if (x > 255.0) { x = 255.0; }
+  if (y < 0.0) { y = 0.0; } if (y > 255.0) { y = 255.0; }
+  
+  // Calculate the plane coefficients for the equation
+  // Ax + By + Cz = MD
+  calc_abcmd(x, y, &A, &B, &C, &MD);
+
+  // and do the final result
+  z = (MD - A*x - B*y) / C;
+  return z;
+}
+
+
 dbuf_t *MakeLayerPatches(uint16_t *patch_set, uint16_t *patch_set_remaining)
 {
   //-- fixme defvar_slpacket_new(pkt, PackLayerData);
