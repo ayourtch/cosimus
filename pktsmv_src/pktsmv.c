@@ -457,6 +457,31 @@ float smv_get_height_map_at(float x, float y)
   return z;
 }
 
+static int
+lua_fn_smv_set_height_map_at(lua_State *L)
+{
+  int x = luaL_checkint(L, 1);
+  int y = luaL_checkint(L, 2);
+  float z = luaL_checknumber(L, 3);
+
+  if( (x >= 0) && (y >= 0) && (x <= 255) && (y <= 255) ) {
+    smv_set_height_map_at(x, y, z);
+  } else {
+    luaL_error(L, "set_height_map_at - arguments are out of range: (%d, %d, %f)", x, y, z);
+  }
+  return 0;
+}
+
+static int
+lua_fn_smv_get_height_map_at(lua_State *L)
+{
+  float x = luaL_checknumber(L, 1);
+  float y = luaL_checknumber(L, 2);
+  float z = smv_get_height_map_at(x, y);
+  lua_pushnumber(L, z);
+  return 1;
+}
+
 
 dbuf_t *MakeLayerPatches(uint16_t *patch_set, uint16_t *patch_set_remaining)
 {
@@ -596,6 +621,8 @@ lua_fn_start_listener(lua_State *L) {
 static const luaL_reg smvlib[] = {
   { "start_listener", lua_fn_start_listener },
   { "SendLayerData", lua_fn_SendLayerData },
+  { "set_height_map_at", lua_fn_smv_set_height_map_at },
+  { "get_height_map_at", lua_fn_smv_get_height_map_at },
   { NULL, NULL }
 };
 
