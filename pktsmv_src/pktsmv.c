@@ -558,7 +558,7 @@ lua_fn_SendLayerData(lua_State *L)
     for(y=0; y<256; y++) {
       my_height_map[y*256 + x] = 30 * cos(((float)x - 128.0)/64.0) * cos(((float)y - 128.0)/64.0);
       // Flat terrain
-      my_height_map[y*256 + x] = 0.3;
+      //my_height_map[y*256 + x] = 0.3;
     }
   }
   
