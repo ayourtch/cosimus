@@ -297,7 +297,7 @@ enum { LayerLand = 0x4C };
 
 float my_height_map[256*256];
 
-void smv_height_map_at(int x, int y, float z)
+void smv_set_height_map_at(int x, int y, float z)
 {
   if( (x >= 0) && (y >= 0) && (x <= 255) && (y <= 255) ) {
     my_height_map[y*256 + x] = z;
