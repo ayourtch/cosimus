@@ -351,7 +351,7 @@ static void calc_abcmd(float x, float y, float *A, float *B, float *C, float *MD
   // 3rd point is the average of all 4 points of the bounding x-y square.
 
   x3 = 0.5 + x0; 
-  y3 = 0.5 + x0;
+  y3 = 0.5 + y0;
   z3 = 0.25 * ( H(x0, y0) + H(x0+1, y0) + H(x0, y0+1) + H(x0+1, y0+1) );
 
   /* 
@@ -377,7 +377,7 @@ static void calc_abcmd(float x, float y, float *A, float *B, float *C, float *MD
    * To figure out which of the triangles holds the (x,y) we need to find the position
    * of that dot reative to two diagonals.
    *
-   * First - if x > y then we're either in 1 or 2, else if 
+   * First - if x - x0> y - y0 then we're either in 1 or 2, else if 
    * x < y then we're in either 3 or 4. If we just use that to fix the x1/y1 pair to 
    * the common point, I think we will get the "flipover" effect. So we'll assign 
    * the coordinates for x1, x2 always in pairs.
@@ -410,7 +410,8 @@ static void calc_abcmd(float x, float y, float *A, float *B, float *C, float *MD
    */
 
   if(x0+1-x > y-y0) { // either #1 or #4
-    if(x > y) { // #1
+    // and according to gnuplot I mixed 1 and 4... odd.
+    if(x-x0 > y-y0) { // #1
       x1 = x0; y1 = y0; z1 = H(x0,y0);
       x2 = x0+1.0; y2 = y0; z2 = H(x0+1,y0);
     } else { // #4
@@ -418,7 +419,8 @@ static void calc_abcmd(float x, float y, float *A, float *B, float *C, float *MD
       x2 = x0; y2 = y0; z2 = H(x0,y0);
     }
   } else { // either #2 or #3
-    if(x > y) { // #2
+    // hmm on the graph looks like I mixed 2 and 3, yet I miss it...
+    if(x-x0 > y-y0) { // #2
       x1 = x0+1.0; y1 = y0; z1 = H(x0+1,y0);
       x2 = x0+1.0; y2 = y0+1.0; z2 = H(x0+1,y0+1);
     } else { // #3
