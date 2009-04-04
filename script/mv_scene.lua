@@ -103,10 +103,43 @@ end
 function scene_move_avatar_by(AgentID, dx, dy, dz)
   -- move the avatar by some offset
   local av = scene_get_avatar(AgentID)
-  av.X = av.X + dx
-  av.Y = av.Y + dy
-  av.Z = av.Z + dz
-  scene_update_all_agent_move(av)
+  local newX = av.X + dx
+  local newY = av.Y + dy
+  local newZ = av.Z + dz
+  local terrZ = smv.get_height_map_at(newX, newY)
+  local moved = false
+  print("New terrain Z:", terrZ)
+  -- threshold after which the huge Z-delta will cause us
+  -- to treat us this as a wall, so no movement at all then.
+  -- FIXME: dx and dy can be different, so this is only
+  -- a prototype 
+
+  local Z_nomove_threshold = 20.0
+
+  -- now see if we are going to go above/below terrain
+  -- in Z-dimension
+
+  if math.abs(terrZ - newZ) < Z_nomove_threshold then
+    av.X = newX
+    av.Y = newY
+    av.Z = terrZ -- FIXME: this needs to be adjusted according to av size
+    print("Scene: normal move:", av.X, av.Y, av.Z, "Z:", terrZ, newZ)
+    moved = true
+  else
+    if not (av.Z ==  smv.get_height_map_at(av.X, av.Y)) then
+      -- FIXME: treat the initial misalignments here for now. 
+      av.X = newX
+      av.Y = newY
+      av.Z = newZ  -- FIXME: this needs to be adjusted according to av size
+      print("Scene: fix-up move:", av.X, av.Y, av.Z, "Z:", terrZ, newZ)
+      moved = true
+    end
+  end
+  if moved then
+    scene_update_all_agent_move(av)
+  else
+    print("Scene: not moved:", av.X, av.Y, av.Z, "Z:", terrZ, newZ)
+  end
 end
 
 function mv_scene_register_handlers(StackType, handlers)
