@@ -6,7 +6,7 @@ tst: tst.o
 	$(CC) $(LDFLAGS) -o tst $^ $(LIBS) $(LUA_LIBS)
 
 tstlib.so: tstlib.o
-	$(CC) $(LDFLAGS) -fPIC -shared -o tstlib.so $^ $(LIBS) $(LUA_LIBS)
+	$(CC) $(LDFLAGS) -shared -o tstlib.so $^ $(LIBS) $(LUA_LIBS)
 
 clean:
 	rm -f *.o tst *.so
