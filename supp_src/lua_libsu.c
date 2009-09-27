@@ -130,7 +130,7 @@ static int lua_fn_dcheck(lua_State *L)
 }
 static int lua_fn_dstr(lua_State *L)
 {
-  unsigned int len;
+  size_t len;
   char *str = (void *)luaL_checklstring(L, 1, &len);
   dbuf_t *d = dalloc(len+10000);
   dmemcat(d, str, len);
@@ -148,7 +148,7 @@ static int lua_fn_dgetstr(lua_State *L)
 static int lua_fn_dstrcat(lua_State *L)
 {
   dbuf_t *d = lua_checkdbuf(L, 1);
-  unsigned int len;
+  size_t len;
   char *str = (void *)luaL_checklstring(L, 2, &len);
   dmemcat(d, str, len);
   lua_pushlightuserdata(L, d);
