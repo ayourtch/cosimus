@@ -197,7 +197,6 @@ function smv_chat_from_viewer(sess, d)
   if Message then
     local cmd = string.sub(Message, 1, -2)
     print("'" .. cmd .. "'")
-    print(assert(loadstring(cmd))())
   end
 end
 
