@@ -3,7 +3,7 @@ AR= ar rcu
 RANLIB= ranlib
 RM= rm -f
 
-CFLAGS = -Wall -Werror -fPIC -I../supp_src -I../fmv_src -I../lua/lua-5.1.4/src -I../pktsmv_src -I../lua/luazip-1.2.3/src
+CFLAGS = -Wall -Werror -I../supp_src -I../fmv_src -I../lua/lua-5.1.4/src -I../pktsmv_src -I../lua/luazip-1.2.3/src
 LDFLAGS = -rdynamic 
 CFLAGS += -g 
 # -pg
