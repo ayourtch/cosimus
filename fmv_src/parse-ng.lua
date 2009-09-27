@@ -323,7 +323,7 @@ function HeaderArrayFieldStr(field, byref, spacer)
   if spacer then
     sp = spacer
   end
-  out = "u8t *" .. field.name .. sp .. "unsigned int " .. ArrayFieldLengthName(field)
+  out = "u8t *" .. field.name .. sp .. "size_t " .. ArrayFieldLengthName(field)
   return out
 end
 
