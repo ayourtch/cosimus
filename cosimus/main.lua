@@ -25,7 +25,7 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 package.cpath = ""
 package.path = "?.lua;../script/?.lua"
 
-default_ip = "127.0.0.1"
+default_ip = os.getenv("COSIMUS_DEFAULT_IP") or "127.0.0.1"
 
 default_sim_ip_for_login_server = default_ip
 default_login_server_ip = default_ip
