@@ -629,7 +629,7 @@ static const luaL_reg smvlib[] = {
 };
 
 LUA_API int luaopen_libpktsmv (lua_State *L) {
-  printf("Address of event handler: %x\n", (unsigned int)smv_packet);
+  printf("Address of event handler: %p\n", smv_packet);
   luaL_openlib(L, "smv", smvlib, 0);
   return 1;
 }
