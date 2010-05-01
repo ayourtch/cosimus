@@ -317,7 +317,8 @@ function smv_cb_wearables_received(a)
   assert(wearables)
 
   local p = fmv.packet_new()
-  pretty("xxxxx", a)
+  print("Callback smv_cb_wearables_received")
+  -- pretty("xxxxx", a)
 
   fmv.UpdateCreateInventoryItemHeader(p)
   fmv.UpdateCreateInventoryItem_AgentData(p, AgentID,

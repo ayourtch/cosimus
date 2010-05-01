@@ -71,7 +71,7 @@ function invloc_create_folder(AgentID, ID, parent, FolderType, FolderName, noche
   f.ChildItems = {}
   if parent then
     local par = int_inventory_get_item_from(AgentID, parent)
-    print("Parent::", parent, AgentID)
+    -- print("Parent::", parent, AgentID)
     if not par and not nocheck then
       local uupar = invloc_create_folder(AgentID, parent, zero_uuid, 0, "Root Folder Autocreated", true)
       par = int_inventory_get_item_from(AgentID, uupar)

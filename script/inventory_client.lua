@@ -46,9 +46,9 @@ function int_inventory_client_parse_wearables(idx, d)
   -- we've just received wearables, parse them
   local is = inventory_client_sockets
   local http_code, body, http_message = http_client_parse_reply(idx)
-  print("WeGotWearables!!!", http_code, http_message, body)
+  print("Callback int_inventory_client_parse_wearables:", http_code, http_message) -- , body)
   local w = Json.Decode(body)
-  pretty("wrbl", w)
+  -- pretty("wrbl", w)
   local a = async_get(is[idx].AsyncID)
   a.Wearables = w
   a.Callback(a)
@@ -192,7 +192,7 @@ end
 
 function int_cb_inventory_client_fetch_descendents(idx, d)
   local http_code, body, http_message = http_client_parse_reply(idx)
-  print("Create descentends!!!", http_code, http_message, body)
+  print("Callback int_cb_inventory_client_fetch_descendents, result: ", http_code, http_message) -- , body)
   if http_code == 200 then
     local res = Json.Decode(body)
     if res.Result == "OK" then
