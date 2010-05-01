@@ -182,6 +182,7 @@ function inventory_client_create_folder(SessionID, AgentID, FolderID, ParentID, 
   local uuid, a = int_inventory_client_mkasync(SessionID, AgentID, cb)
   cmd.Command = "create_folder"
   cmd.AgentID = AgentID
+  cmd.arg = {}
   cmd.arg.FolderID = FolderID
   cmd.arg.ParentID = ParentID
   cmd.arg.Type = Type
