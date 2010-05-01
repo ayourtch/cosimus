@@ -109,6 +109,10 @@ function inventory_server_http(uri, appdata, dh, dd)
         local item = invloc_create_inventory_item_x(req.AgentID, req.FolderID, req.arg)
 	res.Result = "OK"
 	res.Item = item
+      elseif req.Command == "create_folder" then
+        local item = invloc_create_folder(req.AgentID, req.arg.FolderID, req.arg.Type, req.arg.Name)
+        res.Result = "OK"
+        res.Item = item
       elseif req.Command == "fetch_descendents" then
         -- arg.FolderID, arg.OwnerID, arg.SortOrder, arg.FetchFolders, arg.FetchItems
         res.Result = "OK"
