@@ -129,12 +129,12 @@ int http_start_listener(char *addr, int port, http_dispatcher_func_t dispatcher)
 void
 dhtml_redirect(dbuf_t * dd, char *url)
 {
-  dprintf(dd,
+  dxprintf(dd,
           "<html><head><META HTTP-EQUIV=\"refresh\" content=\"0;URL=%s\"></head>",
           url);
-  dprintf(dd, "<body>");
-  dprintf(dd, "Redirecting to <a href=\"%s\">%s</a>...\n", url, url);
-  dprintf(dd, "</body></html>");
+  dxprintf(dd, "<body>");
+  dxprintf(dd, "Redirecting to <a href=\"%s\">%s</a>...\n", url, url);
+  dxprintf(dd, "</body></html>");
 }
 
 dbuf_t *swf_intro_dbuf = NULL;
@@ -210,30 +210,30 @@ do_l7_reset(int idx)
 
 #ifdef DEAD_CODE  
   else if(strcmp(ad->http_path, "/") == 0) {
-    dprintf(dd, "<h1>Test page</h1>");
-    dprintf(dd, "<form method='post' action='postaction' enctype='multipart/form-data'><input type='text' name=editor><input type=file name=txt><input type='submit'></form>");
+    dxprintf(dd, "<h1>Test page</h1>");
+    dxprintf(dd, "<form method='post' action='postaction' enctype='multipart/form-data'><input type='text' name=editor><input type=file name=txt><input type='submit'></form>");
     
   } else if(strcmp(ad->http_path, "/postaction") == 0) {
-    dprintf(dd, "<h1>Post results</h1>");
-    dprintf(dd, "<pre>Content len: %d</pre>", ad->post_content_got_length);
-    dprintf(dd, "<pre>");
+    dxprintf(dd, "<h1>Post results</h1>");
+    dxprintf(dd, "<pre>Content len: %d</pre>", ad->post_content_got_length);
+    dxprintf(dd, "<pre>");
     if (ad->post_content_buf) {
       dstrcat(dd, (void *)ad->post_content_buf->buf, ad->post_content_buf->dsize);
     }
-    dprintf(dd, "</pre>");
+    dxprintf(dd, "</pre>");
   } else if(strcmp(ad->http_path, "/status") == 0) {
-    dprintf(dd, "<h1>Some header</h1>");
-    dprintf(dd, "You came from: <b>%s</b>", ad->http_referer);
-    dprintf(dd, "URI you requested: %s\n", ad->http_path);
-    dprintf(dd, "<pre>");
-    dprintf(dd, "QUERY_STRING: %s\n", getenv("QUERY_STRING"));
+    dxprintf(dd, "<h1>Some header</h1>");
+    dxprintf(dd, "You came from: <b>%s</b>", ad->http_referer);
+    dxprintf(dd, "URI you requested: %s\n", ad->http_path);
+    dxprintf(dd, "<pre>");
+    dxprintf(dd, "QUERY_STRING: %s\n", getenv("QUERY_STRING"));
     //dprint_tree(dd);
-    dprintf(dd, "</pre>");
+    dxprintf(dd, "</pre>");
   } else if(strcmp(ad->http_path, "/version.txt") == 0) {
     /*
        debug(DBG_GLOBAL, 1, "Requested version, version is: %ld", jpeg_screenshot_generation);
-       //dprintf(dh, "Content-Type: text/plain\r\n");
-       dprintf(dd, "%ld\r\n\r\n", jpeg_screenshot_generation);
+       //dxprintf(dh, "Content-Type: text/plain\r\n");
+       dxprintf(dd, "%ld\r\n\r\n", jpeg_screenshot_generation);
      */
 
   } else if(strcmp(ad->http_path, "/screen.jpg") == 0) {
@@ -245,7 +245,7 @@ do_l7_reset(int idx)
        } else {
        debug(DBG_GLOBAL, 2, "nothing to send yet");
        }
-       dprintf(dh, "Content-Type: image/jpeg\r\n");
+       dxprintf(dh, "Content-Type: image/jpeg\r\n");
      */
   } else if(strstr(ad->http_path, "/go/") == ad->http_path) {
   } else {
@@ -253,10 +253,10 @@ do_l7_reset(int idx)
   }
 
 /* FIXME
-    dprintf(dh, "Content-Type: %s\r\n",  hdf_get_value(cdata[idx].cgi->hdf, "Response.ContentType", NULL));
-    dprintf(dh, "Content-Length: %d\r\n", dd->dsize);
+    dxprintf(dh, "Content-Type: %s\r\n",  hdf_get_value(cdata[idx].cgi->hdf, "Response.ContentType", NULL));
+    dxprintf(dh, "Content-Length: %d\r\n", dd->dsize);
 */
-  //dprintf(dh, "Transfer-Encoding: chunked\r\n");
+  //dxprintf(dh, "Transfer-Encoding: chunked\r\n");
 
 #endif // DEAD_CODE
 
@@ -307,7 +307,7 @@ http_handle_request(int idx)
         global_time = time(NULL);
         strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT",
            gmtime(&global_time));
-        dprintf(dh0, "Date: %s\r\n", timebuf);
+        dxprintf(dh0, "Date: %s\r\n", timebuf);
 	dmemcat(dh0, dh->buf, dh->dsize);
 	dh->dsize = 0;
 	dmemcat(dh, dh0->buf, dh0->dsize);
@@ -316,7 +316,7 @@ http_handle_request(int idx)
       debug(DBG_GLOBAL, 2, "Retcode[idx %d]: %d", idx, retcode);
     }
   } else {
-    dprintf(dh, "HTTP/1.0 400 Not Found\r\n");
+    dxprintf(dh, "HTTP/1.0 400 Not Found\r\n");
   }
   debug(DBG_GLOBAL, 2, "index %d , Content-length: %d\n", idx, dd->dsize);
   dstrcat(dh, "\r\n", -1);
@@ -356,7 +356,7 @@ http_handle_request_connect(int idx)
   global_time = time(NULL);
   strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT",
            gmtime(&global_time));
-  dprintf(dh, "Date: %s\r\n", timebuf);
+  dxprintf(dh, "Date: %s\r\n", timebuf);
   unique_id++;
 
 
@@ -367,10 +367,10 @@ http_handle_request_connect(int idx)
   }
 
 /* FIXME
-    dprintf(dh, "Content-Type: %s\r\n",  hdf_get_value(cdata[idx].cgi->hdf, "Response.ContentType", NULL));
-    dprintf(dh, "Content-Length: %d\r\n", dd->dsize);
+    dxprintf(dh, "Content-Type: %s\r\n",  hdf_get_value(cdata[idx].cgi->hdf, "Response.ContentType", NULL));
+    dxprintf(dh, "Content-Length: %d\r\n", dd->dsize);
 */
-  //dprintf(dh, "Transfer-Encoding: chunked\r\n");
+  //dxprintf(dh, "Transfer-Encoding: chunked\r\n");
   debug(DBG_GLOBAL, 2, "index %d , Content-length: %d\n", idx, dd->dsize);
   dstrcat(dh, "\r\n", -1);
   dconcat(dh, dd);

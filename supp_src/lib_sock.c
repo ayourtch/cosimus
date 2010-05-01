@@ -91,7 +91,7 @@ void print_socks(void)
 void
 pkt_dprint_cdata(int i, dbuf_t * d)
 {
-  dprintf(d,
+  dxprintf(d,
           "  %d:%s  do_ssl:%d,ssl:%d,listen:%d,lport:%-5d remote:%16s:%-5d fd:%-5d revents:%x\n",
           i, cdata[i].is_udp ? "udp" : "tcp", cdata[i].do_ssl,
           cdata[i].is_ssl, cdata[i].listener, cdata[i].listen_port,

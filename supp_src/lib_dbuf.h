@@ -113,7 +113,7 @@ void dunlock(void *ptr);
 void dsend(int idx, dbuf_t * d);
 
 
-void dprintf(dbuf_t * d, char *fmt, ...);
+void dxprintf(dbuf_t * d, char *fmt, ...);
 
 dbuf_t *dstrcpy(const char *str);
 dbuf_t *dsubstrcpy(dbuf_t *d, int start, int howmany);

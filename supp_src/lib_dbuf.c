@@ -620,18 +620,18 @@ dmemcasescan(dbuf_t * d, char c, int start)
   return i;
 }
 
-char _dprintf_temp_buf[1024];
+char _dxprintf_temp_buf[1024];
 void
-dprintf(dbuf_t * d, char *fmt, ...)
+dxprintf(dbuf_t * d, char *fmt, ...)
 {
   va_list ap;
   int total;
 
   va_start(ap, fmt);
-  total = vsnprintf(_dprintf_temp_buf, sizeof(_dprintf_temp_buf), fmt, ap);
-  debug(DBG_GLOBAL, 250, "buffer for dprintf: '%s' (%d bytes long)\n",
-        _dprintf_temp_buf, total);
-  dstrcat(d, _dprintf_temp_buf, total);
+  total = vsnprintf(_dxprintf_temp_buf, sizeof(_dxprintf_temp_buf), fmt, ap);
+  debug(DBG_GLOBAL, 250, "buffer for dxprintf: '%s' (%d bytes long)\n",
+        _dxprintf_temp_buf, total);
+  dstrcat(d, _dxprintf_temp_buf, total);
   va_end(ap);
 }
 

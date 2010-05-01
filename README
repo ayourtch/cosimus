@@ -31,7 +31,8 @@ As such, there are some decisions that I made:
 ---------------------------------------------------------------------------
 
 Running the code:
- 
+
+apt-get install build-essential libreadline-dev libzzip-dev xutils-dev libssl-dev
 make
 cd cosimus
 ./cosimus main.lua
