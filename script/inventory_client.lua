@@ -196,7 +196,7 @@ function int_cb_inventory_client_fetch_descendents(idx, d)
     local res = Json.Decode(body)
     if res.Result == "OK" then
       local a = async_get(inventory_client_sockets[idx].AsyncID)
-      pretty("DescendentsY", res.Descendents)
+      -- pretty("DescendentsY", res.Descendents)
       a.Callback(a, res.Descendents)
     else
       fixme_error("No error-callback... FIXME!")
