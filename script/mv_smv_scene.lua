@@ -94,6 +94,7 @@ function smv_scene_send_avatar_data_to_session(SessionID, AgentID)
   local p = fmv.packet_new()
   local av = scene_get_avatar(AgentID)
   local sess = smv_get_session(SessionID)
+  print("Sending data about " .. AgentID .. " to " .. SessionID .. " index " .. sess.idx)
   fmv.ObjectUpdateHeader(p)
   fmv.ObjectUpdate_RegionData(p, smv_get_region_handle(), 32766);
   fmv.ObjectUpdate_ObjectDataBlockSize(p, 1)
