@@ -590,13 +590,19 @@ static int smv_packet(int idx, dbuf_t *d0, void *ptr) {
   int err;
   dbuf_t *d;
   lua_State *L = ptr;
+  int dbg_index;
 
   d = MaybeZeroDecodePacket(d0);
+  lua_getglobal(L, "debug");
+  lua_getfield(L, -1, "traceback");
+  lua_remove(L, -2);
+  dbg_index = lua_gettop(L);
+
   lua_getglobal(L, "smv_packet");
   lua_pushnumber(L, idx);
   lua_pushlightuserdata(L, d);
 
-  err = lua_pcall(L, 2, 1, 0);
+  err = lua_pcall(L, 2, 1, dbg_index);
   if(err) {
     debug(DBG_GLOBAL, 0, "Lua error: %s", lua_tostring(L,-1));
     lua_pop(L, 1);
