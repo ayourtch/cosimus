@@ -44,7 +44,9 @@ function smv_get_session(uuid)
 end
 
 function smv_get_session_id_agent_id(uuid)
-  return smv_state.sess_id_by_agent_id[uuid]
+  local sess = smv_state.sess_id_by_agent_id[uuid]
+  return (vchk(sess, "Session by agent id " .. 
+                      tostring(uuid) .. " not nil", sess ~= nil))
 end
 
 function smv_next_seq(sess, p)

@@ -54,6 +54,7 @@ function scene_update_all_agent_add(av)
   -- send the updates to all the rest of the agents about a new avatar about to be added
   for ag_uuid, ag in pairs(mv_state.scene.avatars) do
     local ev_update_add = mv_runtime.avatar_scene_handlers[ag.StackType].ev_update_add
+    print("Sending ev_update_add", tostring(ag), tostring(av))
     ev_update_add(ag, av)
     -- notify the newly added client about the others
     local ev_update_add1 = mv_runtime.avatar_scene_handlers[av.StackType].ev_update_add
