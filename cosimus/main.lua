@@ -64,6 +64,11 @@ config = {
       "cosimus_assets_inventory.zip"
     }
   },
+
+  debug_server = {
+    ServerAddress = "0.0.0.0";
+    ServerPort = 8090;
+  },
 }
 
 config.inventory_client = {

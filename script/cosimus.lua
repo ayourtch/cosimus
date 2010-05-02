@@ -31,9 +31,11 @@ require 'inventory_client'
 require 'loginserver'
 require 'assetserver'
 require 'inventoryserver'
+require 'debugserver'
 
 loginserver.coldstart()
 smv.coldstart()
 inventoryserver.coldstart()
 assetserver.coldstart()
+debugserver.coldstart()
 
