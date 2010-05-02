@@ -823,6 +823,16 @@ function smv_agent_is_now_wearing(sess, d)
 end
 
 function smv_agent_set_appearance(sess, d)
+  local AgentID, SessionID, SerialNum, Size = fmv.Get_AgentSetAppearance_AgentData(d)
+  local szw = fmv.Get_AgentSetAppearance_WearableDataBlockSize(d)
+  local TextureEntry = fmv.Get_AgentSetAppearance_ObjectData(d) 
+  local szv = fmv.Get_AgentSetAppearance_VisualParamBlockSize(d)
+  
+  print("smv_agent_set_appearance for " .. AgentID .. " number " .. SerialNum .. " size " .. Size)
+  print("szw: ", szw)
+  print("szv: ", szv) 
+  print("txe: ", #TextureEntry)
+  
 end
 
 function smv_agent_animation(sess, d)
