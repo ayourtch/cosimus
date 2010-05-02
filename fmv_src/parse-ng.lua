@@ -528,6 +528,9 @@ end
 
 function CoreCodePacketHeader(otab, packet)
   local flags = "0|RELIABLE"
+  if packet.name == "PacketAck" then
+    flags = "0"
+  end
   if packet.encoded then
     flags = flags .. "|ZEROCODED"
   end
