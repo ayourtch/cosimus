@@ -170,6 +170,15 @@ lua_fn_cdata_get_remote4(lua_State *L) {
 }
 
 static int 
+lua_fn_cdata_set_remote4(lua_State *L) {
+  int idx = luaL_checkint(L, 1);
+  uint32_t addr = luaL_checkint(L, 2);
+  uint16_t port = luaL_checkint(L, 3);
+  cdata_set_remote4(idx, &addr, &port);
+  return 0;
+}
+
+static int 
 lua_fn_cdata_check_remote4(lua_State *L) {
   int idx = luaL_checkint(L, 1);
   int addr = luaL_checkint(L, 2);
@@ -466,6 +475,7 @@ static const luaL_reg su_lib[] = {
   {"dstrcat", lua_fn_dstrcat },
 
   {"cdata_get_remote4", lua_fn_cdata_get_remote4 },
+  {"cdata_set_remote4", lua_fn_cdata_set_remote4 },
   {"cdata_check_remote4", lua_fn_cdata_check_remote4 },
   { "sock_send_data", lua_fn_sock_send_data },
   { "sock_write_data", lua_fn_sock_write_data },

@@ -159,6 +159,17 @@ cdata_get_remote4(int idx, uint32_t *addr, uint16_t *port) {
 }
 
 int 
+cdata_set_remote4(int idx, uint32_t *addr, uint16_t *port) {
+  if (addr) {
+    *((uint32_t *) (&cdata[idx].remote.sin_addr)) = *addr; 
+  }
+  if (port) {
+    cdata[idx].remote.sin_port = *port;
+  }
+  return 1;
+}
+
+int 
 cdata_check_remote4(int idx, uint32_t addr, uint16_t port) {
   uint32_t a;
   uint16_t p;

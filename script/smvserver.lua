@@ -72,6 +72,7 @@ function smv_send_then_unlock(sess, p)
   fmv.FinalizePacketLength(p)
   p1 = fmv.MaybeZeroEncodePacket(p)
   -- todo - checking against stale sessions
+  su.cdata_set_remote4(sess.idx, sess.remote_addr, sess.remote_port)
   su.sock_send_data(sess.idx, p1)
   -- su.print_dbuf(0, 0, p)
   dsize, size = su.dcheck(p)
