@@ -187,6 +187,7 @@ function smv_logout_session(sess)
   smv_state.sess_id_by_remote[sess.remote_str] = nil
   smv_state.sess_id_by_agent_id[sess.AgentID] = nil
   smv_state.sessions[session_id] = nil
+  scene_remove_avatar(sess.AgentID)
 end
 
 function smv_agent_width_height(sess, d)
