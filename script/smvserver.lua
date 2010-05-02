@@ -30,6 +30,7 @@ require 'asset_client'
 require 'mv_smv_scene'
 require 'mv_scene'
 require 'simplemath'
+require 'common'
 
 zero_uuid = "00000000-0000-0000-0000-000000000000"
 
@@ -38,7 +39,8 @@ function cr()
 end
 
 function smv_get_session(uuid)
-  return smv_state.sessions[uuid]
+  local sess = smv_state.sessions[vchk(uuid, "session uuid not nil", uuid ~= nil)]
+  return vchk(sess, "sess not nil", sess ~= nil)
 end
 
 function smv_get_session_id_agent_id(uuid)
